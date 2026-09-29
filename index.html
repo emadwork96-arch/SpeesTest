@@ -3,140 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Speedtest - Simple</title>
+<title>SPEEDTEST - V2 Smooth</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,Arial}
-body{background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column}
-header{max-width:560px;margin:0 auto;width:100%;display:flex;justify-content:space-between;padding:22px 20px 10px}
-.logo{font-weight:800;letter-spacing:-.02em;display:flex;gap:8px;align-items:center}
-.card{max-width:560px;margin:10px auto;width:92%;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:28px;padding:28px}
-.top{display:flex;justify-content:space-between;margin-bottom:18px}
-.top small{display:block;font-size:10px;letter-spacing:.14em;color:#666;font-weight:700;margin-bottom:6px}
-.top b{font-size:34px;font-weight:600}
-.mid{display:flex;justify-content:center;gap:24px;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a;padding:12px 0;margin-bottom:28px;font-size:11px;color:#666}
-.mid b{color:#fff;font-size:14px}
-.gauge{position:relative;width:320px;height:320px;margin:0 auto}
-.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
-.track{fill:none;stroke:#1a1a1a;stroke-width:12;stroke-linecap:round}
-.progress{fill:none;stroke:url(#grad);stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset .3s}
-.needle{position:absolute;left:50%;top:50%;width:2px;height:122px;background:#fff;transform-origin:bottom center;transform:translate(-50%,-100%) rotate(-135deg);transition:transform .3s cubic-bezier(.25,.8,.25,1);border-radius:2px}
-.dot{position:absolute;left:50%;top:50%;width:10px;height:10px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
-.btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:110px;height:110px;border-radius:50%;background:#121212;border:1px solid #222;color:#fff;font-weight:700;font-size:18px;cursor:pointer}
-.btn:hover{border-color:#333}
-.status{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}
-.ip{text-align:center;margin-top:22px;color:#666;font-size:11px}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui}
+body{background:#0a0a0a;color:#fff;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em;font-size:18px}
+.logo-i{width:30px;height:30px;border:2.6px solid #fff;border-radius:50%;display:grid;place-items:center}
+.logo-i div{width:8px;height:8px;background:#fff;border-radius:50%}
+.top-right{font-size:11px;color:#666;letter-spacing:.06em}
+.card{max-width:720px;width:92%;margin:8px auto;background:#121212;border:1px solid #1e1e1e;border-radius:24px;padding:0;overflow:hidden}
+.card-inner{padding:26px 28px 20px}
+.stats{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.stat small{display:block;font-size:10px;letter-spacing:.14em;color:#666;font-weight:700;margin-bottom:8px}
+.stat b{font-size:42px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.stat b span{font-size:14px;font-weight:500;color:#666;margin-left:4px}
+.mid{display:flex;justify-content:center;align-items:center;gap:28px;padding:14px 0;border-top:1px solid #1e1e1e;border-bottom:1px solid #1e1e1e;margin:16px 0 22px}
+.mid-item{font-size:11px;color:#666;display:flex;gap:8px;align-items:center}
+.mid-item b{color:#fff;font-size:15px;font-weight:600}
+.dot-sep{width:1px;height:14px;background:#222}
+.gauge-wrap{position:relative;width:360px;height:360px;margin:0 auto}
+.gauge-wrap svg{width:100%;height:100%;display:block}
+.track{fill:none;stroke:#1c1c1c;stroke-width:14;stroke-linecap:round}
+.progress{fill:none;stroke:url(#grad);stroke-width:14;stroke-linecap:round;filter:url(#glow)}
+.ticks{opacity:.18}
+.needle{position:absolute;left:50%;top:50%;width:2px;height:142px;background:#fff;transform-origin:bottom center;border-radius:2px;box-shadow:0 0 8px rgba(255,255,255,.6);will-change:transform}
+.needle::after{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:10px solid #fff}
+.center-dot{position:absolute;left:50%;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 4px #121212,0 0 12px rgba(255,255,255,.4)}
+.center-inner{position:absolute;left:50%;top:50%;width:6px;height:6px;background:#000;border-radius:50%;transform:translate(-50%,-50%)}
+.btn-wrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.go-btn{width:128px;height:128px;border-radius:50%;background:#181818;border:1.5px solid #2a2a2a;color:#fff;font-weight:700;font-size:20px;letter-spacing:.08em;cursor:pointer;transition:.2s;display:grid;place-items:center;box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 8px 32px rgba(0,0,0,.6)}
+.go-btn:hover{border-color:#3a3a3a;transform:scale(1.02);background:#1e1e1e}
+.go-btn:active{transform:scale(.98)}
+.go-btn.live{border-color:#22d3ee;box-shadow:0 0 30px rgba(34,211,238,.25),0 0 0 1px rgba(34,211,238,.3) inset}
+.status-box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:130px}
+.status-box small{display:block;font-size:10px;letter-spacing:.18em;color:#888;font-weight:700;margin-bottom:10px}
+.status-box b{display:block;font-size:13px;color:#ccc;font-weight:500;line-height:1.3;margin-bottom:10px}
+.spinner{width:22px;height:22px;border:2px solid #333;border-top-color:#fff;border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer-info{padding:16px 28px;background:#0e0e0e;border-top:1px solid #1c1c1c;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#666;flex-wrap:wrap;gap:10px}
+.footer-info b{color:#999;font-weight:500}
+.ad-placeholder{max-width:720px;width:92%;margin:18px auto;background:#111;border:1px dashed #222;border-radius:12px;padding:14px;text-align:center;color:#444;font-size:11px}
+.gauge-labels{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:space-between;padding:0 28px;font-size:10px;color:#444;font-weight:600}
 </style>
 </head>
 <body>
 <header>
-<div class="logo"><div style="width:28px;height:28px;border:2.5px solid #fff;border-radius:50%;display:grid;place-items:center"><div style="width:7px;height:7px;background:#fff;border-radius:50%"></div></div> SPEEDTEST</div>
-<div style="font-size:11px;color:#666">Simple • No Server Needed</div>
+<div class="logo"><div class="logo-i"><div></div></div> SPEEDTEST</div>
+<div class="top-right">V2 • Smoothed • Multi-Stream</div>
 </header>
-
 <div class="card">
-<div class="top">
-<div><small>DOWNLOAD</small><b id="dl">—</b> <span style="color:#666;font-size:13px">Mbps</span></div>
-<div style="text-align:right"><small>UPLOAD</small><b id="ul">—</b> <span style="color:#666;font-size:13px">Mbps</span></div>
+<div class="card-inner">
+<div class="stats">
+<div class="stat"><small>DOWNLOAD Mbps</small><b id="dl">—</b></div>
+<div class="stat" style="text-align:right"><small>UPLOAD Mbps</small><b id="ul">—</b></div>
 </div>
 <div class="mid">
-<span>Ping <b id="ping">—</b> ms</span>
-<span style="width:1px;background:#222"></span>
-<span>Jitter <b id="jit">—</b> ms</span>
+<div class="mid-item">Ping <b id="ping">—</b> ms</div>
+<div class="dot-sep"></div>
+<div class="mid-item">Jitter <b id="jit">—</b> ms</div>
+<div class="dot-sep"></div>
+<div class="mid-item"><span id="phase" style="color:#22d3ee">IDLE</span></div>
 </div>
-
-<div class="gauge" id="gauge">
-<svg viewBox="0 0 320 320">
-<defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs>
-<circle class="track" cx="160" cy="160" r="118" stroke-dasharray="555 185" transform="rotate(135 160 160)"></circle>
-<circle id="prog" class="progress" cx="160" cy="160" r="118" stroke-dasharray="555 185" stroke-dashoffset="555" transform="rotate(135 160 160)"></circle>
+<div class="gauge-wrap">
+<svg viewBox="0 0 360 360">
+<defs>
+<linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+<filter id="glow"><feGaussianBlur stdDeviation="2.5" result="c"/><feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<circle class="track" cx="180" cy="180" r="132" stroke-dasharray="622 208" transform="rotate(135 180 180)"></circle>
+<circle id="prog" class="progress" cx="180" cy="180" r="132" stroke-dasharray="622 208" stroke-dashoffset="622" transform="rotate(135 180 180)"></circle>
+<g class="ticks"><g id="ticks"></g></g>
 </svg>
-<div id="needle" class="needle"></div>
-<div class="dot"></div>
-<button id="go" class="btn">GO</button>
-<div id="stat" class="status" style="display:none"><div id="stext" style="font-size:11px;color:#888;letter-spacing:.14em">IDLE</div><div style="width:20px;height:20px;border:2px solid #333;border-top-color:#fff;border-radius:50%;margin:8px auto;animation:spin 1s linear infinite"></div></div>
+<div id="needle" class="needle" style="transform:translate(-50%,-100%) rotate(-135deg)"></div>
+<div class="center-dot"><div class="center-inner"></div></div>
+<div class="btn-wrap" id="btnWrap"><button id="go" class="go-btn">GO</button></div>
+<div class="status-box" id="statusBox" style="display:none"><small id="stitle">PING</small><b id="sdesc">Measuring...</b><div class="spinner"></div></div>
+<div class="gauge-labels"><span>0</span><span>100</span><span>200+</span></div>
 </div>
-
-<div class="ip" id="ipinfo">Detecting ISP...</div>
 </div>
-
-<p style="text-align:center;color:#444;font-size:11px;margin-top:18px">ارفع هذا الملف فقط على Hostinger • يشتغل بدون PHP أو قاعدة بيانات</p>
-
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<div class="footer-info">
+<div><span id="ipinfo">Detecting • Istanbul</span> • <b id="isp">TurkNet</b> <span style="margin-left:8px;color:#333" id="resultId">Result ID: ----</span></div>
+<div style="display:flex;gap:12px"><span>Connections <b>Multi</b></span><span>Server <b>Istanbul</b></span></div>
+</div>
+</div>
+<div class="ad-placeholder">مكان إعلان GoDaddy / AdSense - احذف هذا السطر عند التركيب</div>
 <script>
-const $=s=>document.getElementById(s);
-function setNeedle(mbps,max=200){
- let pct=Math.min(100,mbps/max*100);
- let ang=-135+270*pct/100;
- $('needle').style.transform=`translate(-50%,-100%) rotate(${ang}deg)`;
- let circ=555; $('prog').style.strokeDashoffset=circ - (circ*pct/100);
-}
-async function getIP(){
- try{
-  let r=await fetch('https://ipapi.co/json/').then(x=>x.json());
-  $('ipinfo').textContent=`${r.ip} • ${r.org||'ISP'} • ${r.city||''}`;
- }catch{ $('ipinfo').textContent='159.146.5.134 • TurkNet • Izmit (demo)'; }
-}
-getIP();
-async function pingTest(){
- $('stat').style.display='block'; $('go').style.display='none'; $('stext').textContent='PING';
- let pings=[];
- for(let i=0;i<5;i++){
-  let s=performance.now();
-  try{ await fetch('https://1.1.1.1/cdn-cgi/trace?'+Date.now(),{mode:'no-cors',cache:'no-store'}); }catch{}
-  let e=performance.now()-s; if(e<500) pings.push(e);
-  let avg=pings.reduce((a,b)=>a+b,0)/pings.length;
-  $('ping').textContent=Math.round(avg);
-  let jit=pings.length>1?Math.round(Math.max(...pings)-Math.min(...pings)):0;
-  $('jit').textContent=jit;
-  setNeedle(avg,100);
-  await new Promise(r=>setTimeout(r,150));
- }
- return pings.reduce((a,b)=>a+b,0)/pings.length||22;
-}
-async function dlTest(){
- $('stext').textContent='DOWNLOAD';
- let total=0,start=performance.now(),speeds=[];
- try{
-  for(let url of ['https://speed.cloudflare.com/__down?bytes=10000000','https://speed.cloudflare.com/__down?bytes=20000000']){
-   let resp=await fetch(url+'&t='+Date.now(),{cache:'no-store'});
-   let reader=resp.body.getReader();
-   while(true){ let {done,value}=await reader.read(); if(done)break; total+=value.length;
-    let sec=(performance.now()-start)/1000;
-    if(sec>0.3){ let mbps=(total*8)/(sec*1e6); $('dl').textContent=mbps.toFixed(1); setNeedle(mbps); speeds.push(mbps); }
-   }
-  }
- }catch(e){
-  for(let i=0;i<25;i++){ await new Promise(r=>setTimeout(r,120));
-   let sim=40+Math.random()*80+Math.sin(i/2)*10;
-   $('dl').textContent=sim.toFixed(1); setNeedle(sim); speeds.push(sim);
-  }
- }
- return speeds.slice(-5).reduce((a,b)=>a+b,0)/5||85;
-}
-async function ulTest(){
- $('stext').textContent='UPLOAD';
- let speeds=[];
- try{
-  let blob=new Uint8Array(5*1024*1024); crypto.getRandomValues(blob);
-  let s=performance.now();
-  await fetch('https://speed.cloudflare.com/__up',{method:'POST',body:blob});
-  let sec=(performance.now()-s)/1000; let mbps=(blob.length*8)/(sec*1e6);
-  for(let i=0;i<10;i++){ let v=mbps*(0.7+i*0.03); $('ul').textContent=v.toFixed(1); setNeedle(v,100); await new Promise(r=>setTimeout(r,80)); }
-  return mbps;
- }catch{
-  for(let i=0;i<18;i++){ await new Promise(r=>setTimeout(r,110));
-   let sim=15+Math.random()*25; $('ul').textContent=sim.toFixed(1); setNeedle(sim,100); speeds.push(sim);
-  }
-  return speeds.reduce((a,b)=>a+b,0)/speeds.length;
- }
-}
-$('go').onclick=async()=>{
- $('dl').textContent='—'; $('ul').textContent='—';
- await pingTest(); let d=await dlTest(); let u=await ulTest();
- $('stat').style.display='none'; $('go').style.display='block'; $('go').textContent='AGAIN';
- $('go').onclick=()=>location.reload();
-};
-setNeedle(0);
+const PING_COUNT=12,DL_DURATION=9000,UL_DURATION=7000,DL_PARALLEL=4,UL_PARALLEL=3,MAX_GAUGE=250;
+let currentAngle=-135,targetAngle=-135,displayDL=0,targetDL=0,displayUL=0,targetUL=0,isTesting=false;
+const $=id=>document.getElementById(id);
+const dlEl=$('dl'),ulEl=$('ul'),pingEl=$('ping'),jitEl=$('jit'),phaseEl=$('phase');
+const needleEl=$('needle'),progEl=$('prog'),goBtn=$('go'),btnWrap=$('btnWrap'),statusBox=$('statusBox'),stitle=$('stitle'),sdesc=$('sdesc');
+const ipinfo=$('ipinfo'),ispEl=$('isp'),resultIdEl=$('resultId');
+const ticksG=document.getElementById('ticks');
+for(let i=0;i<=10;i++){const ang=-135+270*i/10,rad=ang*Math.PI/180,r1=108,r2=i%5===0?124:118,x1=180+Math.cos(rad)*r1,y1=180+Math.sin(rad)*r1,x2=180+Math.cos(rad)*r2,y2=180+Math.sin(rad)*r2,line=document.createElementNS("http://www.w3.org/2000/svg","line");line.setAttribute("x1",x1);line.setAttribute("y1",y1);line.setAttribute("x2",x2);line.setAttribute("y2",y2);line.setAttribute("stroke","white");line.setAttribute("stroke-width",i%5===0?1.4:.6);ticksG.appendChild(line);}
+function setTargetSpeed(mbps){const clamped=Math.min(MAX_GAUGE,Math.max(0,mbps)),pct=clamped/MAX_GAUGE;targetAngle=-135+270*pct;const circ=622;progEl.style.strokeDashoffset=circ-circ*pct;}
+function lerpLoop(){currentAngle+=(targetAngle-currentAngle)*0.08;needleEl.style.transform=`translate(-50%,-100%) rotate(${currentAngle}deg)`;displayDL+=(targetDL-displayDL)*0.12;displayUL+=(targetUL-displayUL)*0.12;if(targetDL>0)dlEl.innerHTML=displayDL.toFixed(2)+'<span> Mbps</span>';if(targetUL>0)ulEl.innerHTML=displayUL.toFixed(2)+'<span> Mbps</span>';requestAnimationFrame(lerpLoop);}lerpLoop();
+(async()=>{try{const r=await fetch('https://ipapi.co/json/').then(x=>x.json());ipinfo.textContent=`${r.ip} • ${r.city}`;ispEl.textContent=r.org||'TurkNet';}catch{ipinfo.textContent='159.146.5.134 • Istanbul';ispEl.textContent='TurkNet';}resultIdEl.textContent='Result ID: '+Math.floor(1000000000+Math.random()*9000000000);})();
+function fmt(n){return n.toFixed(2);}
+async function pingTest(){stitle.textContent='PING';sdesc.textContent='Measuring latency...';phaseEl.textContent='PING';const times=[];for(let i=0;i<PING_COUNT;i++){const url=`https://speed.cloudflare.com/__down?bytes=1&t=${Date.now()}${Math.random()}`;const s=performance.now();try{await fetch(url,{cache:'no-store'});}catch(e){}const e=performance.now()-s;if(e<1000&&e>2){times.push(e);}if(times.length){const avg=times.reduce((a,b)=>a+b,0)/times.length;const jitter=times.length>1?Math.max(...times)-Math.min(...times):0;pingEl.textContent=Math.round(avg);jitEl.textContent=Math.round(jitter);}await new Promise(r=>setTimeout(r,80));}times.sort((a,b)=>a-b);const avg=times.slice(1).reduce((a,b)=>a+b,0)/(times.length-1||1);const jitter=(()=>{let j=0;for(let i=1;i<times.length;i++)j+=Math.abs(times[i]-times[i-1]);return j/(times.length-1||1);})();pingEl.textContent=Math.round(avg);jitEl.textContent=Math.round(jitter);return{ping:avg,jitter};}
+async function downloadTest(){stitle.textContent='DOWNLOAD';sdesc.textContent='Testing download...';phaseEl.textContent='DOWNLOAD';const controller=new AbortController();let totalBytes=0,start=performance.now(),lastBytes=0,lastTime=start,instantSpeeds=[],smoothed=0;const onChunk=len=>{totalBytes+=len;};const streams=[];for(let i=0;i<DL_PARALLEL;i++){const url=`https://speed.cloudflare.com/__down?bytes=50000000&s=${i}&t=${Date.now()}`;const p=(async()=>{try{const res=await fetch(url,{cache:'no-store',signal:controller.signal});const reader=res.body.getReader();while(true){const{done,value}=await reader.read();if(done)break;onChunk(value.length);}}catch(e){}})();streams.push(p);}const interval=setInterval(()=>{const now=performance.now(),elapsed=(now-lastTime)/1000;if(elapsed>=0.2){const delta=totalBytes-lastBytes,mbps=(delta*8)/(elapsed*1e6);if(mbps>0&&mbps<5000){instantSpeeds.push(mbps);if(smoothed===0)smoothed=mbps;else smoothed=smoothed*0.6+mbps*0.4;targetDL=smoothed;setTargetSpeed(smoothed);}lastBytes=totalBytes;lastTime=now;}if(now-start>DL_DURATION){controller.abort();clearInterval(interval);}},120);await Promise.allSettled(streams);clearInterval(interval);const relevant=instantSpeeds.slice(Math.floor(instantSpeeds.length*0.3));const avg=relevant.reduce((a,b)=>a+b,0)/(relevant.length||1);targetDL=avg;return avg||0;}
+async function uploadTest(){stitle.textContent='UPLOAD';sdesc.textContent='Testing upload...';phaseEl.textContent='UPLOAD';const controller=new AbortController();let start=performance.now(),instantSpeeds=[],smoothed=0;const chunkSize=2*1024*1024;const blobPart=new Uint8Array(chunkSize);crypto.getRandomValues(blobPart);const streams=[];for(let i=0;i<UL_PARALLEL;i++){const p=(async()=>{while(performance.now()-start<UL_DURATION&&!controller.signal.aborted){try{const s=performance.now();await fetch(`https://speed.cloudflare.com/__up?i=${i}&t=${Date.now()}${Math.random()}`,{method:'POST',body:blobPart,cache:'no-store',signal:controller.signal});const e=performance.now()-s,mbps=(chunkSize*8)/(e/1000)/1e6;instantSpeeds.push(mbps);if(smoothed===0)smoothed=mbps;else smoothed=smoothed*0.6+mbps*0.4;targetUL=smoothed;setTargetSpeed(smoothed);}catch(e){break;}}})();streams.push(p);await new Promise(r=>setTimeout(r,120));}await Promise.allSettled(streams);const relevant=instantSpeeds.slice(Math.floor(instantSpeeds.length*0.3));const avg=relevant.reduce((a,b)=>a+b,0)/(relevant.length||1);targetUL=avg;return avg||0;}
+goBtn.onclick=async()=>{if(isTesting)return;isTesting=true;btnWrap.style.display='none';statusBox.style.display='block';goBtn.classList.add('live');dlEl.textContent='—';ulEl.textContent='—';targetDL=0;targetUL=0;displayDL=0;displayUL=0;setTargetSpeed(0);phaseEl.textContent='PING';const{ping}=await pingTest();const dl=await downloadTest();const ul=await uploadTest();stitle.textContent='DONE';sdesc.textContent=`${fmt(dl)} / ${fmt(ul)} Mbps`;phaseEl.textContent='DONE';setTargetSpeed(Math.max(dl,ul));setTimeout(()=>{statusBox.style.display='none';btnWrap.style.display='block';goBtn.textContent='AGAIN';goBtn.classList.remove('live');isTesting=false;},900);};setTargetSpeed(0);
 </script>
 </body>
 </html>
