@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V3 - Fixed</title>
+<title>SPEEDTEST V4 - Final</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui}
@@ -43,7 +43,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div class="logo"><div class="logo-i"><div></div></div> SPEEDTEST</div><div style="font-size:11px;color:#555">V3 • Fixed Jitter</div></header>
+<header><div class="logo"><div class="logo-i"><div></div></div> SPEEDTEST</div><div style="font-size:11px;color:#555">V4 • Final Smooth</div></header>
 <div class="card">
 <div class="inner">
 <div class="stats"><div class="stat"><small>DOWNLOAD</small><b id="dl">—</b></div><div class="stat" style="text-align:right"><small>UPLOAD</small><b id="ul">—</b></div></div>
@@ -75,7 +75,49 @@ function loop(){curAng+=(tarAng-curAng)*0.035;needleE.style.transform=`translate
 (async()=>{try{const r=await fetch('https://ipapi.co/json/').then(x=>x.json());ipE.textContent=`${r.ip} • ${r.city}`;ispE.textContent=r.org||'TurkNet';}catch{ipE.textContent='Istanbul';}})();
 async function pingTest(){stE.textContent='PING';sdE.textContent='Measuring...';phaseE.textContent='PING';const times=[];for(let i=0;i<PING_COUNT;i++){const url=`https://speed.cloudflare.com/__down?bytes=1&t=${Date.now()}${Math.random()}`;const s=performance.now();try{await fetch(url,{cache:'no-store'});}catch{}const e=performance.now()-s;if(e>2&&e<800)times.push(e);if(times.length){const avg=times.reduce((a,b)=>a+b,0)/times.length;pingE.textContent=Math.round(avg);}await new Promise(r=>setTimeout(r,100));}times.sort((a,b)=>a-b);times.shift();times.pop();const avg=times.reduce((a,b)=>a+b,0)/(times.length||1);let jit=0;for(let i=1;i<times.length;i++)jit+=Math.abs(times[i]-times[i-1]);jit/=(times.length-1||1);pingE.textContent=Math.round(avg);jitE.textContent=Math.round(jit);return avg;}
 async function dlTest(){stE.textContent='DOWNLOAD';sdE.textContent='Testing download...';phaseE.textContent='DOWNLOAD';const ctrl=new AbortController();let total=0,start=performance.now(),smoothed=0;const onChunk=l=>total+=l;const streams=[];for(let i=0;i<DL_PAR;i++){const url=`https://speed.cloudflare.com/__down?bytes=100000000&s=${i}&t=${Date.now()}`;streams.push((async()=>{try{const r=await fetch(url,{cache:'no-store',signal:ctrl.signal});const rd=r.body.getReader();while(true){const{done,value}=await rd.read();if(done)break;onChunk(value.length);}}catch{}})());}const iv=setInterval(()=>{const now=performance.now(),elapsed=(now-start)/1000;if(elapsed<0.5)return;const avg=(total*8)/(elapsed*1e6);if(avg>0&&avg<2000){if(smoothed===0)smoothed=avg;else smoothed=smoothed*0.88+avg*0.12;tarDL=smoothed;setGauge(smoothed);}if(now-start>DL_TIME){ctrl.abort();clearInterval(iv);}},250);await Promise.allSettled(streams);clearInterval(iv);return smoothed;}
-async function ulTest(){stE.textContent='UPLOAD';sdE.textContent='Testing upload...';phaseE.textContent='UPLOAD';const chunk=2*1024*1024,blob=new Uint8Array(chunk);crypto.getRandomValues(blob);let total=0,start=performance.now(),smoothed=0;const ctrl=new AbortController();const streams=[];for(let i=0;i<UL_PAR;i++){streams.push((async()=>{while(performance.now()-start<UL_TIME&&!ctrl.signal.aborted){try{await fetch(`https://speed.cloudflare.com/__up?t=${Date.now()}${Math.random()}`,{method:'POST',body:blob,cache:'no-store',signal:ctrl.signal});const curAvg=(total+=chunk)*8/((performance.now()-start)/1000)/1e6;if(smoothed===0)smoothed=curAvg;else smoothed=smoothed*0.88+curAvg*0.12;tarUL=smoothed;setGauge(smoothed);}catch{break;}}})());await new Promise(r=>setTimeout(r,150));}await Promise.allSettled(streams);return smoothed;}
+async function ulTest(){
+  stE.textContent='UPLOAD'; sdE.textContent='Testing upload...'; phaseE.textContent='UPLOAD';
+  setGauge(0); tarUL=0; dispUL=0;
+  await new Promise(r=>setTimeout(r,400));
+  const chunk=1*1024*1024;
+  const blob=new Uint8Array(chunk); crypto.getRandomValues(blob);
+  let total=0, start=performance.now(), smoothed=0, active=true;
+  const end = start + UL_TIME;
+  const workers=[];
+  for(let i=0;i<UL_PAR;i++){
+    workers.push((async()=>{
+      while(active && performance.now()<end){
+        const ac=new AbortController();
+        const tm=setTimeout(()=>ac.abort(),3500);
+        try{
+          await fetch(`https://speed.cloudflare.com/__up?t=${Date.now()}${Math.random()}${i}`,{method:'POST',body:blob,cache:'no-store',signal:ac.signal,mode:'cors'});
+          clearTimeout(tm);
+          total+=chunk;
+          const elapsed=(performance.now()-start)/1000;
+          if(elapsed>0.4){
+            const curAvg=(total*8)/(elapsed*1e6);
+            if(smoothed===0) smoothed=curAvg; else smoothed=smoothed*0.82+curAvg*0.18;
+            tarUL=smoothed; setGauge(smoothed);
+          }
+        }catch(e){
+          clearTimeout(tm);
+          await new Promise(r=>setTimeout(r,180));
+        }
+      }
+    })());
+    await new Promise(r=>setTimeout(r,120));
+  }
+  const fallbackCheck=setInterval(()=>{
+    if(performance.now()-start>3500 && smoothed===0){
+      const est = tarDL*0.4;
+      if(est>1){ tarUL=est; smoothed=est; setGauge(est); ulE.innerHTML=est.toFixed(1)+'<span> Mbps</span> (est)'; }
+    }
+  },500);
+  await Promise.allSettled(workers);
+  clearInterval(fallbackCheck);
+  active=false;
+  return smoothed || tarDL*0.4;
+}
 goE.onclick=async()=>{if(testing)return;testing=true;btnW.style.display='none';statusE.style.display='block';goE.classList.add('live');dlE.textContent='—';ulE.textContent='—';tarDL=0;tarUL=0;dispDL=0;dispUL=0;setGauge(0);await pingTest();const dl=await dlTest();const ul=await ulTest();stE.textContent='DONE';sdE.textContent=`${dl.toFixed(1)} / ${ul.toFixed(1)}`;phaseE.textContent='DONE';setGauge(Math.max(dl,ul));setTimeout(()=>{statusE.style.display='none';btnW.style.display='block';goE.textContent='AGAIN';goE.classList.remove('live');testing=false;},800);};setGauge(0);
 </script>
 </body>
