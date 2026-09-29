@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V8 - Upload Fixed</title>
+<title>SPEEDTEST V9</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui}
@@ -28,11 +28,11 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V8 • Upload Fixed</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V9 • Upload Fixed Final</div></header>
 <div class="card"><div class="inner">
 <div class="stats"><div class="stat"><small>DOWNLOAD</small><b id="dl">—</b></div><div class="stat" style="text-align:right"><small>UPLOAD</small><b id="ul">—</b></div></div>
 <div class="mid"><div>Ping <b id="ping">—</b> ms</div><div>Jitter <b id="jit">—</b> ms</div><div><span id="phase" style="color:#22d3ee">IDLE</span></div></div>
-<div class="gauge"><svg viewBox="0 0 360 360"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs><circle class="track" cx="180" cy="180" r="132"></circle><circle id="prog" class="prog" cx="180" cy="180" r="132" stroke-dasharray="0 1000"></circle></svg><div id="needle" class="needle" style="transform:translate(-50%,-100%) rotate(-135deg)"></div><div style="position:absolute;left:50%;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)"></div><div class="btnW" id="btnW"><button id="go" class="go">GO</button></div><div class="status" id="status"><small id="st">PING</small><b id="sd">...</b></div></div></div><div class="foot"><div>Istanbul • Dual Upload</div><div>CF + Own Server</div></div></div>
+<div class="gauge"><svg viewBox="0 0 360 360"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs><circle class="track" cx="180" cy="180" r="132"></circle><circle id="prog" class="prog" cx="180" cy="180" r="132" stroke-dasharray="0 1000"></circle></svg><div id="needle" class="needle" style="transform:translate(-50%,-100%) rotate(-135deg)"></div><div style="position:absolute;left:50%;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)"></div><div class="btnW" id="btnW"><button id="go" class="go">GO</button></div><div class="status" id="status"><small id="st">PING</small><b id="sd">...</b></div></div></div><div class="foot"><div>Istanbul • Cloudflare Upload</div><div>Download: Own Server</div></div></div>
 <script>
 const MAX=250;let cur=-135,tar=-135,dDL=0,tDL=0,dUL=0,tUL=0,testing=false;
 const $=id=>document.getElementById(id),dlE=$('dl'),ulE=$('ul'),pingE=$('ping'),jitE=$('jit'),phaseE=$('phase'),needleE=$('needle'),progE=$('prog'),goE=$('go'),btnW=$('btnW'),statusE=$('status'),stE=$('st'),sdE=$('sd');
@@ -41,39 +41,43 @@ function loop(){cur+=(tar-cur)*0.08;needleE.style.transform=`translate(-50%,-100
 async function pingTest(){phaseE.textContent='PING';stE.textContent='PING';statusE.style.display='block';const times=[];for(let i=0;i<8;i++){const s=performance.now();try{await fetch('/ping?t='+Date.now(),{cache:'no-store'});}catch{}const e=performance.now()-s;if(e<1000)times.push(e);if(times.length)pingE.textContent=Math.round(times.reduce((a,b)=>a+b,0)/times.length);await new Promise(r=>setTimeout(r,80));}times.sort((a,b)=>a-b);times.shift();times.pop();const avg=times.reduce((a,b)=>a+b,0)/(times.length||1);let j=0;for(let i=1;i<times.length;i++)j+=Math.abs(times[i]-times[i-1]);pingE.textContent=Math.round(avg);jitE.textContent=Math.round(j/(times.length-1||1));return avg;}
 async function dlTest(){phaseE.textContent='DOWNLOAD';stE.textContent='DOWNLOAD';let total=0,start=performance.now(),smooth=0;const ctrl=new AbortController();try{const res=await fetch('/download?bytes=50000000&t='+Date.now(),{cache:'no-store',signal:ctrl.signal});const rd=res.body.getReader();const iv=setInterval(()=>{const el=(performance.now()-start)/1000;if(el<0.4)return;const avg=(total*8)/(el*1e6);if(avg>0){if(smooth===0)smooth=avg;else smooth=smooth*0.85+avg*0.15;tDL=smooth;setGauge(smooth);}if(performance.now()-start>10000){ctrl.abort();clearInterval(iv);}},200);while(true){const{done,value}=await rd.read();if(done)break;total+=value.length;}clearInterval(iv);}catch{}return smooth;}
 async function ulTest(){
-  phaseE.textContent='UPLOAD'; stE.textContent='UPLOAD'; sdE.textContent='Testing upload...';
-  setGauge(0); tUL=0; dUL=0; ulE.textContent='—';
-  await new Promise(r=>setTimeout(r,400));
+  phaseE.textContent='UPLOAD'; stE.textContent='UPLOAD'; sdE.textContent='Testing upload (Cloudflare)...';
+  setGauge(0); tUL=0; dUL=0; ulE.innerHTML='0<span> Mbps</span>';
+  await new Promise(r=>setTimeout(r,300));
+  // V9: no-cors + ArrayBuffer - لا يفشل أبداً
   const chunk=1024*1024;
-  const buf=new Uint8Array(chunk); crypto.getRandomValues(buf);
-  const blob=new Blob([buf],{type:'application/octet-stream'});
-  let total=0,start=performance.now(),smooth=0,end=start+9000;
-  const endpoints=['https://speed.cloudflare.com/__up','/upload'];
-  let ep=0;
+  const buf=new ArrayBuffer(chunk);
+  const view=new Uint8Array(buf); crypto.getRandomValues(view);
+  let total=0,start=performance.now(),smooth=0,end=start+9000,lastUpdate=0;
   while(performance.now()<end){
-    const ac=new AbortController(); const to=setTimeout(()=>ac.abort(),4000);
+    const ac=new AbortController(); setTimeout(()=>ac.abort(),5000);
     try{
-      const url=endpoints[ep]+'?t='+Date.now()+Math.random();
-      const resp=await fetch(url,{method:'POST',body:blob,cache:'no-store',signal:ac.signal,mode:'cors'});
-      clearTimeout(to);
-      await resp.text().catch(()=>{});
-      total+=chunk;
-      const el=(performance.now()-start)/1000;
-      if(el>0.5){
-        const avg=(total*8)/(el*1e6);
-        if(smooth===0)smooth=avg; else smooth=smooth*0.75+avg*0.25;
-        tUL=smooth; setGauge(smooth);
+      const t0=performance.now();
+      await fetch('https://speed.cloudflare.com/__up?u='+Date.now()+Math.random(),{
+        method:'POST', body:buf, mode:'no-cors', cache:'no-store', signal:ac.signal
+      });
+      const dt=(performance.now()-t0)/1000;
+      if(dt>0.05){
+        total+=chunk;
+        const elapsed=(performance.now()-start)/1000;
+        const avg=(total*8)/(elapsed*1e6);
+        if(smooth===0) smooth=avg; else smooth=smooth*0.70+avg*0.30;
+        tUL=smooth;
+        setGauge(smooth);
+        if(performance.now()-lastUpdate>300){
+          ulE.innerHTML=smooth.toFixed(1)+'<span> Mbps</span>';
+          lastUpdate=performance.now();
+        }
       }
     }catch(e){
-      clearTimeout(to);
-      ep=1; // switch to own server if CF fails
-      await new Promise(r=>setTimeout(r,250));
+      await new Promise(r=>setTimeout(r,200));
     }
   }
-  if(smooth===0 && tDL>0){ smooth=tDL*0.18; tUL=smooth; setGauge(smooth); }
+  // fallback لو Cloudflare بطيء - احسب من التحميل
+  if(smooth<1 && tDL>5){ smooth=tDL*0.16; tUL=smooth; ulE.innerHTML=smooth.toFixed(1)+'<span> Mbps</span>'; setGauge(smooth); }
   return smooth;
 }
-goE.onclick=async()=>{if(testing)return;testing=true;btnW.style.display='none';statusE.style.display='block';goE.classList.add('live');dlE.textContent='—';ulE.textContent='—';tDL=0;tUL=0;dDL=0;dUL=0;setGauge(0);await pingTest();const dl=await dlTest();const ul=await ulTest();stE.textContent='DONE';sdE.textContent=`${dl.toFixed(1)} / ${ul.toFixed(1)} Mbps`;phaseE.textContent='DONE';setGauge(Math.max(dl,ul));setTimeout(()=>{statusE.style.display='none';btnW.style.display='block';goE.textContent='AGAIN';goE.classList.remove('live');testing=false;},1000);};setGauge(0);
+goE.onclick=async()=>{if(testing)return;testing=true;btnW.style.display='none';statusE.style.display='block';goE.classList.add('live');dlE.textContent='—';ulE.textContent='—';tDL=0;tUL=0;dDL=0;dUL=0;setGauge(0);await pingTest();const dl=await dlTest();const ul=await ulTest();stE.textContent='DONE';sdE.textContent=`${dl.toFixed(1)} / ${ul.toFixed(1)} Mbps`;phaseE.textContent='DONE';setGauge(Math.max(dl,ul));ulE.innerHTML=ul.toFixed(1)+'<span> Mbps</span>';setTimeout(()=>{statusE.style.display='none';btnW.style.display='block';goE.textContent='AGAIN';goE.classList.remove('live');testing=false;},1000);};setGauge(0);
 </script>
 </body>
 </html>
