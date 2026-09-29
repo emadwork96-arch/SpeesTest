@@ -27,7 +27,7 @@ def download():
         'Access-Control-Allow-Origin': '*'
     })
 
-@app.route('/upload', methods=['POST', 'OPTIONS'])
+@app.route('/upload', methods=['POST','OPTIONS'])
 def upload():
     if request.method == 'OPTIONS':
         r = Response('')
@@ -35,12 +35,11 @@ def upload():
         r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
         r.headers['Access-Control-Allow-Headers'] = '*'
         return r
-    # لا نقرأ البيانات - نرجع فوراً، القياس من وقت إرسال العميل
-    # هذا يمنع التعليق على Render Free
-    resp = jsonify(ok=True, received=request.content_length or 0)
+    try:
+        data = request.get_data()
+        length = len(data)
+    except:
+        length = request.content_length or 0
+    resp = jsonify(received=length, ok=True)
     resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Cache-Control'] = 'no-store'
     return resp
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)), threaded=True)
