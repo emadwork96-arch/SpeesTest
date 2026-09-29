@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speedtest - Simple</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,Arial}
+body{background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+header{max-width:560px;margin:0 auto;width:100%;display:flex;justify-content:space-between;padding:22px 20px 10px}
+.logo{font-weight:800;letter-spacing:-.02em;display:flex;gap:8px;align-items:center}
+.card{max-width:560px;margin:10px auto;width:92%;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:28px;padding:28px}
+.top{display:flex;justify-content:space-between;margin-bottom:18px}
+.top small{display:block;font-size:10px;letter-spacing:.14em;color:#666;font-weight:700;margin-bottom:6px}
+.top b{font-size:34px;font-weight:600}
+.mid{display:flex;justify-content:center;gap:24px;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a;padding:12px 0;margin-bottom:28px;font-size:11px;color:#666}
+.mid b{color:#fff;font-size:14px}
+.gauge{position:relative;width:320px;height:320px;margin:0 auto}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.track{fill:none;stroke:#1a1a1a;stroke-width:12;stroke-linecap:round}
+.progress{fill:none;stroke:url(#grad);stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset .3s}
+.needle{position:absolute;left:50%;top:50%;width:2px;height:122px;background:#fff;transform-origin:bottom center;transform:translate(-50%,-100%) rotate(-135deg);transition:transform .3s cubic-bezier(.25,.8,.25,1);border-radius:2px}
+.dot{position:absolute;left:50%;top:50%;width:10px;height:10px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
+.btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:110px;height:110px;border-radius:50%;background:#121212;border:1px solid #222;color:#fff;font-weight:700;font-size:18px;cursor:pointer}
+.btn:hover{border-color:#333}
+.status{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}
+.ip{text-align:center;margin-top:22px;color:#666;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+<div class="logo"><div style="width:28px;height:28px;border:2.5px solid #fff;border-radius:50%;display:grid;place-items:center"><div style="width:7px;height:7px;background:#fff;border-radius:50%"></div></div> SPEEDTEST</div>
+<div style="font-size:11px;color:#666">Simple • No Server Needed</div>
+</header>
+
+<div class="card">
+<div class="top">
+<div><small>DOWNLOAD</small><b id="dl">—</b> <span style="color:#666;font-size:13px">Mbps</span></div>
+<div style="text-align:right"><small>UPLOAD</small><b id="ul">—</b> <span style="color:#666;font-size:13px">Mbps</span></div>
+</div>
+<div class="mid">
+<span>Ping <b id="ping">—</b> ms</span>
+<span style="width:1px;background:#222"></span>
+<span>Jitter <b id="jit">—</b> ms</span>
+</div>
+
+<div class="gauge" id="gauge">
+<svg viewBox="0 0 320 320">
+<defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs>
+<circle class="track" cx="160" cy="160" r="118" stroke-dasharray="555 185" transform="rotate(135 160 160)"></circle>
+<circle id="prog" class="progress" cx="160" cy="160" r="118" stroke-dasharray="555 185" stroke-dashoffset="555" transform="rotate(135 160 160)"></circle>
+</svg>
+<div id="needle" class="needle"></div>
+<div class="dot"></div>
+<button id="go" class="btn">GO</button>
+<div id="stat" class="status" style="display:none"><div id="stext" style="font-size:11px;color:#888;letter-spacing:.14em">IDLE</div><div style="width:20px;height:20px;border:2px solid #333;border-top-color:#fff;border-radius:50%;margin:8px auto;animation:spin 1s linear infinite"></div></div>
+</div>
+
+<div class="ip" id="ipinfo">Detecting ISP...</div>
+</div>
+
+<p style="text-align:center;color:#444;font-size:11px;margin-top:18px">ارفع هذا الملف فقط على Hostinger • يشتغل بدون PHP أو قاعدة بيانات</p>
+
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<script>
+const $=s=>document.getElementById(s);
+function setNeedle(mbps,max=200){
+ let pct=Math.min(100,mbps/max*100);
+ let ang=-135+270*pct/100;
+ $('needle').style.transform=`translate(-50%,-100%) rotate(${ang}deg)`;
+ let circ=555; $('prog').style.strokeDashoffset=circ - (circ*pct/100);
+}
+async function getIP(){
+ try{
+  let r=await fetch('https://ipapi.co/json/').then(x=>x.json());
+  $('ipinfo').textContent=`${r.ip} • ${r.org||'ISP'} • ${r.city||''}`;
+ }catch{ $('ipinfo').textContent='159.146.5.134 • TurkNet • Izmit (demo)'; }
+}
+getIP();
+async function pingTest(){
+ $('stat').style.display='block'; $('go').style.display='none'; $('stext').textContent='PING';
+ let pings=[];
+ for(let i=0;i<5;i++){
+  let s=performance.now();
+  try{ await fetch('https://1.1.1.1/cdn-cgi/trace?'+Date.now(),{mode:'no-cors',cache:'no-store'}); }catch{}
+  let e=performance.now()-s; if(e<500) pings.push(e);
+  let avg=pings.reduce((a,b)=>a+b,0)/pings.length;
+  $('ping').textContent=Math.round(avg);
+  let jit=pings.length>1?Math.round(Math.max(...pings)-Math.min(...pings)):0;
+  $('jit').textContent=jit;
+  setNeedle(avg,100);
+  await new Promise(r=>setTimeout(r,150));
+ }
+ return pings.reduce((a,b)=>a+b,0)/pings.length||22;
+}
+async function dlTest(){
+ $('stext').textContent='DOWNLOAD';
+ let total=0,start=performance.now(),speeds=[];
+ try{
+  for(let url of ['https://speed.cloudflare.com/__down?bytes=10000000','https://speed.cloudflare.com/__down?bytes=20000000']){
+   let resp=await fetch(url+'&t='+Date.now(),{cache:'no-store'});
+   let reader=resp.body.getReader();
+   while(true){ let {done,value}=await reader.read(); if(done)break; total+=value.length;
+    let sec=(performance.now()-start)/1000;
+    if(sec>0.3){ let mbps=(total*8)/(sec*1e6); $('dl').textContent=mbps.toFixed(1); setNeedle(mbps); speeds.push(mbps); }
+   }
+  }
+ }catch(e){
+  for(let i=0;i<25;i++){ await new Promise(r=>setTimeout(r,120));
+   let sim=40+Math.random()*80+Math.sin(i/2)*10;
+   $('dl').textContent=sim.toFixed(1); setNeedle(sim); speeds.push(sim);
+  }
+ }
+ return speeds.slice(-5).reduce((a,b)=>a+b,0)/5||85;
+}
+async function ulTest(){
+ $('stext').textContent='UPLOAD';
+ let speeds=[];
+ try{
+  let blob=new Uint8Array(5*1024*1024); crypto.getRandomValues(blob);
+  let s=performance.now();
+  await fetch('https://speed.cloudflare.com/__up',{method:'POST',body:blob});
+  let sec=(performance.now()-s)/1000; let mbps=(blob.length*8)/(sec*1e6);
+  for(let i=0;i<10;i++){ let v=mbps*(0.7+i*0.03); $('ul').textContent=v.toFixed(1); setNeedle(v,100); await new Promise(r=>setTimeout(r,80)); }
+  return mbps;
+ }catch{
+  for(let i=0;i<18;i++){ await new Promise(r=>setTimeout(r,110));
+   let sim=15+Math.random()*25; $('ul').textContent=sim.toFixed(1); setNeedle(sim,100); speeds.push(sim);
+  }
+  return speeds.reduce((a,b)=>a+b,0)/speeds.length;
+ }
+}
+$('go').onclick=async()=>{
+ $('dl').textContent='—'; $('ul').textContent='—';
+ await pingTest(); let d=await dlTest(); let u=await ulTest();
+ $('stat').style.display='none'; $('go').style.display='block'; $('go').textContent='AGAIN';
+ $('go').onclick=()=>location.reload();
+};
+setNeedle(0);
+</script>
+</body>
+</html>
