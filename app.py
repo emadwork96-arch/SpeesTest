@@ -1,8 +1,7 @@
 from flask import Flask, request, Response, render_template, jsonify
-import os, time
+import os
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
 
 @app.route('/')
 def index():
@@ -10,27 +9,23 @@ def index():
 
 @app.route('/ping')
 def ping():
-    resp = jsonify(pong=True)
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
+    return jsonify(pong=True)
 
 @app.route('/download')
 def download():
-    size = int(request.args.get('bytes', 25000000))
+    size = int(request.args.get('bytes', 30000000))
     size = min(size, 100*1024*1024)
     def gen():
-        chunk_size = 1024*1024
         sent = 0
         while sent < size:
-            yield os.urandom(min(chunk_size, size-sent))
-            sent += chunk_size
-    headers = {
+            yield os.urandom(min(1024*1024, size-sent))
+            sent += 1024*1024
+    return Response(gen(), headers={
         'Content-Type': 'application/octet-stream',
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-        'Access-Control-Allow-Origin': '*',
-        'Content-Length': str(size)
-    }
-    return Response(gen(), headers=headers)
+        'Cache-Control': 'no-store',
+        'Content-Length': str(size),
+        'Access-Control-Allow-Origin': '*'
+    })
 
 @app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload():
@@ -40,23 +35,12 @@ def upload():
         r.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
         r.headers['Access-Control-Allow-Headers'] = '*'
         return r
-    try:
-        total = 0
-        while True:
-            chunk = request.stream.read(64*1024)
-            if not chunk:
-                break
-            total += len(chunk)
-        if total == 0:
-            total = request.content_length or 0
-        resp = jsonify(received=total, ok=True)
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    except Exception as e:
-        resp = jsonify(error=str(e), ok=False)
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp, 200
+    # لا نقرأ البيانات - نرجع فوراً، القياس من وقت إرسال العميل
+    # هذا يمنع التعليق على Render Free
+    resp = jsonify(ok=True, received=request.content_length or 0)
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)), threaded=True)
