@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V10</title>
+<title>SPEEDTEST V11</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -34,7 +34,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V10 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V11 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
@@ -57,17 +57,23 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
       <div class="status" id="status"><small id="st">PING</small><b id="sd">…</b></div>
     </div>
     <div class="note" id="note"></div>
+    <details id="diag" style="display:none;margin-top:14px">
+      <summary style="cursor:pointer;font-size:12px;color:#666">Test details</summary>
+      <pre id="diagTxt" style="margin-top:10px;padding:12px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:12px;font-size:11px;line-height:1.6;color:#9ca3af;white-space:pre-wrap;word-break:break-word"></pre>
+      <button id="diagCopy" style="margin-top:8px;padding:6px 12px;font-size:11px;background:#181818;color:#fff;border:1px solid #2a2a2a;border-radius:8px;cursor:pointer">Copy details</button>
+    </details>
   </div>
-  <div class="foot"><div>Istanbul • 4 streams</div><div>Own server</div></div>
+  <div class="foot"><div>Istanbul • 6 streams</div><div>Own server</div></div>
 </div>
 <script>
 // ---------- settings ----------
 const CFG = {
-  streams: 4,            // parallel connections for download and upload
-  dlBytes: 25e6,         // bytes per download request (stream restarts when done)
+  streams: 6,            // parallel streams for download and upload
+  dlBytes: 50e6,         // bytes per download request (stream restarts when done)
   ulMB: 8,               // MB per upload request
-  duration: 10000,       // ms per phase
-  grace: 1500,           // ms ignored at start of each phase (TCP ramp-up)
+  minDur: 8000,          // ms: earliest a phase may stop (if speed is stable)
+  maxDur: 15000,         // ms: hard stop per phase
+  grace: 2500,           // ms ignored at start (TCP slow-start + mobile radio ramp-up)
   maxGauge: 250          // Mbps at full gauge
 };
 
@@ -138,21 +144,33 @@ function measure(kind, startStream){
       fail(msg){ this.errors++; this.lastError = msg; }
     };
     const t0 = performance.now();
-    let gT = 0, gB = 0, mbps = 0;
+    let gT = 0, gB = 0, mbps = 0, sT = 0, sB = 0;
+    const samples = [];                 // Mbps per ~1 s window, after the grace period
     for (let i=0; i<CFG.streams; i++) setTimeout(() => { if (!ctx.done) startStream(ctx); }, i*120);
 
     const iv = setInterval(() => {
       const now = performance.now(), el = now - t0;
-      if (!gT && el >= CFG.grace){ gT = now; gB = ctx.bytes; }
+      if (!gT && el >= CFG.grace){ gT = now; gB = ctx.bytes; sT = now; sB = ctx.bytes; }
+      if (gT && now - sT >= 1000){
+        samples.push((ctx.bytes - sB) * 8 / ((now - sT) / 1000) / 1e6);
+        sT = now; sB = ctx.bytes;
+      }
       if (gT && now - gT > 250) mbps = (ctx.bytes - gB) * 8 / ((now - gT) / 1000) / 1e6;
       else if (el > 250)        mbps = ctx.bytes * 8 / (el / 1000) / 1e6;
       if (mbps > 0){ target[kind] = mbps; setGauge(mbps); E.sd.textContent = fmt(mbps) + ' Mbps'; }
 
+      // stop early once the last 3 one-second samples agree within 8%
+      let stable = false;
+      if (el >= CFG.minDur && samples.length >= 3){
+        const l = samples.slice(-3), mx = Math.max(...l), mn = Math.min(...l);
+        stable = mx > 0 && (mx - mn) / mx < 0.08;
+      }
       const hopeless = ctx.bytes === 0 && ctx.errors >= CFG.streams * 3;
-      if (el >= CFG.duration || hopeless){
+      if (el >= CFG.maxDur || stable || hopeless){
         ctx.done = true; clearInterval(iv);
         ctx.live.forEach(h => { try { h.abort(); } catch(e){} });
-        resolve({mbps: ctx.bytes > 0 ? mbps : 0, bytes: ctx.bytes, error: ctx.bytes > 0 ? '' : (ctx.lastError || 'no data transferred')});
+        resolve({mbps: ctx.bytes > 0 ? mbps : 0, bytes: ctx.bytes, samples, secs: el/1000,
+                 error: ctx.bytes > 0 ? '' : (ctx.lastError || 'no data transferred')});
       }
     }, 100);
   });
@@ -208,6 +226,30 @@ function ulStream(ctx){
   once();
 }
 
+// ---------- diagnostics ----------
+function showDiag(dl, ul){
+  const res = performance.getEntriesByType('resource');
+  const protoOf = re => [...new Set(res.filter(e => re.test(e.name)).map(e => e.nextHopProtocol || '?'))].join(', ') || 'n/a (no request finished)';
+  const fmtS = s => (s && s.length) ? s.map(v => v.toFixed(0)).join(' ') : '-';
+  const net = navigator.connection ? `${navigator.connection.effectiveType || '?'}` : 'n/a';
+  const lines = [
+    `Protocol   download: ${protoOf(/\/download/)}   upload: ${protoOf(/\/upload/)}`,
+    `Streams    ${CFG.streams}   (grace ${CFG.grace/1000}s)`,
+    `Ping       ${E.ping.textContent} ms   Jitter ${E.jit.textContent} ms`,
+    `Download   ${dl.mbps ? dl.mbps.toFixed(1) : '-'} Mbps over ${dl.secs ? dl.secs.toFixed(1) : '-'}s   (per-second: ${fmtS(dl.samples)})`,
+    `Upload     ${ul.mbps ? ul.mbps.toFixed(1) : '-'} Mbps over ${ul.secs ? ul.secs.toFixed(1) : '-'}s   (per-second: ${fmtS(ul.samples)})`,
+    `Network    ${net}`,
+    `Browser    ${navigator.userAgent}`
+  ];
+  $('diagTxt').textContent = lines.join('\n');
+  $('diag').style.display = 'block';
+}
+$('diagCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('diagTxt').textContent); $('diagCopy').textContent = 'Copied'; }
+  catch(e) { $('diagCopy').textContent = 'Select the text and copy manually'; }
+  setTimeout(() => { $('diagCopy').textContent = 'Copy details'; }, 2000);
+};
+
 // ---------- run ----------
 E.go.onclick = async () => {
   if (testing) return;
@@ -216,6 +258,8 @@ E.go.onclick = async () => {
   for (const k of ['dl','ul']){ target[k] = 0; shown[k] = 0; E[k].textContent = '—'; E[k+'Box'].classList.remove('err'); }
   E.ping.textContent = '—'; E.jit.textContent = '—'; setGauge(0);
   let dl = {mbps:0}, ul = {mbps:0};
+  $('diag').style.display = 'none';
+  try { performance.clearResourceTimings(); } catch(e) {}
   try {
     await pingTest();
 
@@ -231,6 +275,7 @@ E.go.onclick = async () => {
   } catch(e){
     E.note.textContent = 'Test error: ' + (e.message || e);
   } finally {
+    try { showDiag(dl, ul); } catch(e) {}
     setPhase('DONE');
     E.sd.textContent = `${dl.mbps ? fmt(dl.mbps) : '—'} / ${ul.mbps ? fmt(ul.mbps) : '—'}`;
     setGauge(0);
