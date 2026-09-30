@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block main %}
+<article class="wrap prose page">
+  <h1>{{ page_title }}</h1>
+  {% if updated %}<div class="updated">{{ ui.updated }}: {{ updated }}</div>{% endif %}
+  {% for kind, val in body %}{% if kind == 'h' %}<h2>{{ val }}</h2>
+  {% elif kind == 'ul' %}<ul>{% for i in val %}<li>{{ i|linkify }}</li>{% endfor %}</ul>
+  {% else %}<p>{{ val|linkify }}</p>
+  {% endif %}{% endfor %}
+  <a class="back" href="/{{ lang }}">&larr; {{ ui.back }}</a>
+</article>
+{% endblock %}

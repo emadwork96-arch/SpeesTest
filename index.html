@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% macro adslot(slot) %}{% if ads and slot %}<div class="adslot"><small>{{ ui.ad }}</small><ins class="adsbygoogle" style="display:block" data-ad-client="{{ ads.client }}" data-ad-slot="{{ slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins></div>{% endif %}{% endmacro %}
+{% block main %}
+<section class="hero"><h1>{{ c.h1 }}</h1><p>{{ c.sub }}</p></section>
+<div class="card">
+  <div class="inner">
+    <div class="stats">
+      <div class="stat" id="dlBox"><small data-i18n="lbl.download">Download</small><b id="dl">—</b></div>
+      <div class="stat ulbox" id="ulBox"><small data-i18n="lbl.upload">Upload</small><b id="ul" class="ul-num">—</b></div>
+    </div>
+    <div class="mid">
+      <div><span data-i18n="lbl.ping">Ping</span> <span class="ltr"><b id="ping">—</b> ms</span></div>
+      <div><span data-i18n="lbl.jitter">Jitter</span> <span class="ltr"><b id="jit">—</b> ms</span></div>
+      <div><span id="phase">Idle</span></div>
+    </div>
+    <div class="gauge" id="gauge">
+      <svg viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="g"  gradientUnits="userSpaceOnUse" x1="60" y1="0" x2="340" y2="0"><stop offset="0%" style="stop-color:var(--g1)"/><stop offset="100%" style="stop-color:var(--g2)"/></linearGradient>
+          <linearGradient id="g2" gradientUnits="userSpaceOnUse" x1="60" y1="0" x2="340" y2="0"><stop offset="0%" style="stop-color:var(--u1)"/><stop offset="100%" style="stop-color:var(--u2)"/></linearGradient>
+          <filter id="glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g id="ticksBase"></g>
+        <g id="ticksLit"></g>
+        <g id="labels"></g>
+        <g id="peak" style="opacity:0;transition:opacity .3s"><path class="ink" d="M200 57 l-4.5 -8 h9 z"/></g>
+        <g id="needle" transform="rotate(-135 200 200)">
+          <path class="ink" d="M196 200 L204 200 L201.2 94 L198.8 94 Z"/>
+          <circle class="tip" cx="200" cy="91" r="5" filter="url(#glow)"/>
+        </g>
+        <circle class="ink" cx="200" cy="200" r="9"/>
+      </svg>
+      <div class="btnW" id="btnW"><button id="go" class="go">Go</button></div>
+      <div class="status" id="status"><small id="st">Ping</small><b id="sd">…</b></div>
+      <div class="prog" id="prog" aria-hidden="true">
+        <div class="segs">
+          <div class="seg" id="seg-PING" style="flex:1"><i></i></div>
+          <div class="seg" id="seg-DOWNLOAD" style="flex:5"><i></i></div>
+          <div class="seg up" id="seg-UPLOAD" style="flex:5"><i></i></div>
+        </div>
+        <div class="plabels"><span style="flex:1" data-i18n="lbl.ping">Ping</span><span style="flex:5" data-i18n="lbl.download">Download</span><span style="flex:5" data-i18n="lbl.upload">Upload</span></div>
+        <div class="pinfo"><span id="pStep"></span><span id="pLeft"></span></div>
+      </div>
+    </div>
+    <div class="note" id="note"></div>
+    <div class="dx" id="dx" hidden role="status">
+      <div class="dxh"><span class="dxdot" aria-hidden="true"></span><b id="dxTitle"></b><button type="button" id="dxClose" class="dxx" data-i18n-aria="dx.close" aria-label="Close">&times;</button></div>
+      <div class="dxuse" id="dxUse"></div>
+      <ul id="dxList"></ul>
+    </div>
+    <div class="info">
+      <div class="row"><span data-i18n="info.ip">IP address</span><b id="ipV" dir="ltr">…</b></div>
+      <div class="row"><span data-i18n="info.isp">Provider (ISP)</span><b id="ispV" dir="ltr">…</b></div>
+      <div class="row"><span data-i18n="info.loc">Location</span><b id="locV" dir="ltr">…</b></div>
+      <div class="row"><span data-i18n="info.conn">Connection</span><b id="connV">…</b></div>
+    </div>
+    <div class="hint" id="connHint"></div>
+    <div class="hint" id="locHint"></div>
+    <button class="copy" id="copyBtn" disabled data-i18n="btn.copy">Copy result</button>
+    <details id="diag" style="display:none;margin-top:14px">
+      <summary data-i18n="diag.title">Test details</summary>
+      <pre id="diagTxt" class="diagpre"></pre>
+      <button id="diagCopy" class="dbtn" data-i18n="diag.copy">Copy details</button>
+    </details>
+  </div>
+  <div class="foot"><div data-i18n="foot.left">6 parallel streams</div>{% if server_loc %}<div>{{ ui.server }}: {{ server_loc }}</div>{% endif %}</div>
+</div>
+
+{{ adslot(ads.slot_top if ads else None) }}
+<article class="prose wrap">
+  <h2>{{ c.guide_title }}</h2>
+  {% for q, a in c.guide %}<h3>{{ q }}</h3>
+  <p>{{ a }}</p>
+  {% endfor %}
+</article>
+{{ adslot(ads.slot_bottom if ads else None) }}
+<article class="prose wrap">
+  <h2>{{ c.faq_title }}</h2>
+  {% for q, a in c.faq %}<h3>{{ q }}</h3>
+  <p>{{ a }}</p>
+  {% endfor %}
+</article>
+{% endblock %}
+{% block scripts %}
+{% if ads %}<script>window.ST_ADS = {{ ads.client|tojson }};</script>
+{% endif %}<script src="/static/diagnose.js?v={{ ver }}"></script>
+<script src="/static/app.js?v={{ ver }}"></script>
+{% endblock %}
