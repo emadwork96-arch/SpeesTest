@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V13</title>
+<title>SPEEDTEST V14</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -23,9 +23,6 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 .track{fill:none;stroke:#1c1c1c;stroke-width:14;stroke-linecap:round;stroke-dasharray:622 207}
 .prog{fill:none;stroke:url(#g);stroke-width:14;stroke-linecap:round}
 .needle{will-change:transform}
-.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.chips button{background:#0e0e0e;border:1px solid #242424;color:#9ca3af;border-radius:999px;padding:5px 11px;font-size:11px;cursor:pointer}
-.chips button.on{color:#fff;border-color:transparent;background:linear-gradient(90deg,#8b5cf6,#ec4899)}
 .needle{position:absolute;left:50%;top:50%;width:2px;height:38%;background:#fff;transform-origin:bottom center}
 .hub{position:absolute;left:50%;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
 .btnW{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
@@ -43,8 +40,6 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 .info .row:last-child{border-bottom:0}
 .info .row span{color:#666;flex:none}
 .info .row b{font-weight:500;text-align:right;word-break:break-word;min-width:0}
-.info input{flex:1;min-width:0;max-width:220px;background:#0e0e0e;border:1px solid #242424;border-radius:8px;color:#fff;font-size:12px;padding:6px 10px;text-align:right}
-.info input:focus{outline:none;border-color:#a78bfa}
 .hint{font-size:10px;color:#555;margin-top:6px;text-align:center}
 .copy{display:block;width:100%;margin-top:14px;padding:13px;border-radius:14px;border:0;font-size:14px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(90deg,#8b5cf6,#ec4899)}
 .copy:disabled{opacity:.3;cursor:default}
@@ -53,7 +48,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V13 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V14 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
@@ -81,10 +76,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
       <div class="row"><span>IP address</span><b id="ipV">…</b></div>
       <div class="row"><span>Provider (ISP)</span><b id="ispV">…</b></div>
       <div class="row"><span>Location</span><b id="locV">…</b></div>
-      <div class="row"><span>Connection</span>
-        <div class="chips" id="chips"><button type="button" data-k="wifi">Wi-Fi</button><button type="button" data-k="mobile">Mobile data</button><button type="button" data-k="cable">Cable</button></div>
-      </div>
-      <div class="row" id="wifiRow" style="display:none"><span>Wi-Fi name</span><input id="netName" maxlength="40" placeholder="Type it (optional)" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="row"><span>Connection</span><b id="connV">…</b></div>
     </div>
     <div class="hint" id="connHint"></div>
     <button class="copy" id="copyBtn" disabled>Copy result</button>
@@ -279,45 +271,39 @@ function ulStream(ctx){
   once();
 }
 
-// ---------- visitor info (IP / ISP / location) + Wi-Fi name + copy ----------
-const netEl = $('netName'), copyBtn = $('copyBtn');
+// ---------- visitor info (IP / ISP / location / connection type) + copy ----------
+const copyBtn = $('copyBtn');
 let visitor = {ip:'', isp:'', city:'', country:'', mobile:null};
 let lastResult = null;
+let conn = {label:'Unknown', how:'Could not be detected'};
 
-try { netEl.value = localStorage.getItem('st_netname') || ''; } catch(e) {}
-netEl.addEventListener('input', () => { try { localStorage.setItem('st_netname', netEl.value.trim()); } catch(e) {} });
-
-// --- connection type: Wi-Fi / Mobile data / Cable ---
-// Only Android Chrome exposes navigator.connection.type. iPhone Safari exposes nothing, so there we use
-// the network provider's "mobile network" flag from /info, and the user can always tap to correct it.
-const CONN_LABEL = {wifi:'Wi-Fi', mobile:'Mobile data', cable:'Cable (Ethernet)'};
-let connKind = '', connSrc = '', userPicked = false;
+// Connection type is worked out automatically; the visitor never has to choose.
+// - Android Chrome reports it directly (navigator.connection.type).
+// - iPhone Safari and desktop browsers report nothing, so we combine the provider's "mobile network"
+//   flag from /info with the kind of device.
+// A web page cannot read the Wi-Fi name (SSID), and cannot tell Wi-Fi from cable on a computer:
+// every browser blocks that.
 function detectConn(){
   const c = navigator.connection;
-  if (c && c.type === 'cellular') return ['mobile', 'device'];
-  if (c && c.type === 'wifi')     return ['wifi',   'device'];
-  if (c && c.type === 'ethernet') return ['cable',  'device'];
-  if (visitor.mobile === true)    return ['mobile', 'network'];
-  if (visitor.mobile === false)   return ['wifi',   'network'];
-  return ['', ''];
+  if (c && c.type === 'cellular') return {label:'Mobile data',      how:'Detected from your device'};
+  if (c && c.type === 'wifi')     return {label:'Wi-Fi',            how:'Detected from your device'};
+  if (c && c.type === 'ethernet') return {label:'Cable (Ethernet)', how:'Detected from your device'};
+  const ua = navigator.userAgent || '';
+  const phone = /iPhone|iPad|iPod|Android|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (visitor.mobile === true)  return {label:'Mobile data', how:'Your provider runs a mobile network'};
+  if (visitor.mobile === false) return phone
+    ? {label:'Wi-Fi',          how:'Your provider is not a mobile network, so this phone or tablet is on Wi-Fi'}
+    : {label:'Wi-Fi or Cable', how:'Browsers cannot tell Wi-Fi from cable on a computer'};
+  if (/mobile|mobil|cellular|wireless|gsm|lte/i.test(visitor.isp || ''))
+    return {label:'Mobile data (probably)', how:'Guessed from the provider name'};
+  return {label:'Unknown', how:'Could not be detected'};
 }
 function renderConn(){
-  if (!userPicked) [connKind, connSrc] = detectConn();
-  document.querySelectorAll('#chips button').forEach(b => b.classList.toggle('on', b.dataset.k === connKind));
-  $('wifiRow').style.display = connKind === 'wifi' ? 'flex' : 'none';
-  const bits = [];
-  if (!userPicked && connSrc === 'device')  bits.push('Detected from your device.');
-  if (!userPicked && connSrc === 'network') bits.push('Best guess from your network. Tap to change.');
-  if (!connKind)                            bits.push('Could not detect it in this browser. Tap to choose.');
-  if (connKind === 'wifi')                  bits.push("Browsers can't read the Wi-Fi name, so type it once (saved on this device).");
-  $('connHint').textContent = bits.join(' ');
+  conn = detectConn();
+  $('connV').textContent = conn.label;
+  $('connHint').textContent = conn.how + '.';
 }
-$('chips').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  connKind = b.dataset.k; userPicked = true; renderConn();
-});
 if (navigator.connection && navigator.connection.addEventListener) navigator.connection.addEventListener('change', renderConn);
-renderConn();
 
 (async function loadInfo(){
   try {
@@ -332,7 +318,7 @@ renderConn();
 })();
 
 function resultText(){
-  const r = lastResult, net = netEl.value.trim();
+  const r = lastResult;
   const loc = [visitor.city, visitor.country].filter(Boolean).join(', ');
   return [
     `Speedtest - ${r.time}`,
@@ -342,8 +328,7 @@ function resultText(){
     `IP: ${visitor.ip || '-'}`,
     `ISP: ${visitor.isp || '-'}`,
     `Location: ${loc || '-'}`,
-    `Connection: ${CONN_LABEL[connKind] || '-'}`,
-    ...(connKind === 'wifi' && net ? [`Wi-Fi name: ${net}`] : [])
+    `Connection: ${conn.label}`
   ].join('\n');
 }
 async function copyText(txt){
