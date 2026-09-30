@@ -1,0 +1,23 @@
+# Optional: lets Render create the service from this file (New > Blueprint).
+# You can also create the service by hand - see README_AR.md.
+services:
+  - type: web
+    name: speedtest
+    runtime: python
+    plan: starter            # "starter" (paid) does not go to sleep. "free" sleeps after ~15 min idle.
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    healthCheckPath: /healthz
+    envVars:
+      - key: SITE_NAME
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: SERVER_LOCATION
+        sync: false
+      - key: DEFAULT_LANG
+        value: ar
+      - key: ADSENSE_CLIENT
+        sync: false
