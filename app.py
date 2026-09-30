@@ -51,26 +51,44 @@ IP_CACHE_TTL = 3600
 
 def _get_json(url):
     req = urllib.request.Request(url, headers={'User-Agent': 'speedtest/1.0'})
-    with urllib.request.urlopen(req, timeout=3) as r:
+    with urllib.request.urlopen(req, timeout=2.5) as r:
         return json.loads(r.read().decode('utf-8', 'replace'))
 
 
 def lookup_ip(ip):
-    """ISP / location for a public IP. Tries two free HTTPS providers; returns {} if both fail."""
+    """ISP / location / mobile-network flag for a public IP.
+
+    Tries three free HTTPS providers in order and returns {} if all fail.
+    'mobile' is True/False when the provider knows, None when it does not
+    (the page then asks the user to pick Wi-Fi / Mobile data).
+    """
+    try:
+        d = _get_json(f'https://api.ipapi.is/?q={ip}')
+        comp, asn, loc = d.get('company') or {}, d.get('asn') or {}, d.get('location') or {}
+        isp = comp.get('name') or asn.get('org') or ''
+        if isp:
+            mob = d.get('is_mobile')
+            return {'isp': isp, 'asn': asn.get('asn') or '',
+                    'city': loc.get('city') or '', 'country': loc.get('country') or '',
+                    'mobile': mob if isinstance(mob, bool) else None}
+    except Exception:
+        pass
     try:
         d = _get_json(f'https://ipwho.is/{ip}')
         if d.get('success'):
             conn = d.get('connection') or {}
             return {'isp': conn.get('isp') or conn.get('org') or '',
                     'asn': conn.get('asn') or '',
-                    'city': d.get('city') or '', 'country': d.get('country') or ''}
+                    'city': d.get('city') or '', 'country': d.get('country') or '',
+                    'mobile': None}
     except Exception:
         pass
     try:
         d = _get_json(f'https://ipapi.co/{ip}/json/')
         if not d.get('error'):
             return {'isp': d.get('org') or '', 'asn': d.get('asn') or '',
-                    'city': d.get('city') or '', 'country': d.get('country_name') or ''}
+                    'city': d.get('city') or '', 'country': d.get('country_name') or '',
+                    'mobile': None}
     except Exception:
         pass
     return {}
@@ -79,7 +97,7 @@ def lookup_ip(ip):
 @app.route('/info')
 def info():
     ip = client_ip()
-    out = {'ip': ip, 'isp': '', 'city': '', 'country': ''}
+    out = {'ip': ip, 'isp': '', 'city': '', 'country': '', 'mobile': None}
     try:
         public = bool(ip) and ipaddress.ip_address(ip).is_global
     except ValueError:
