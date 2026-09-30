@@ -1,6 +1,10 @@
 from flask import Flask, request, Response, render_template, jsonify
 from werkzeug.exceptions import ClientDisconnected
+import ipaddress
+import json
 import os
+import time
+import urllib.request
 
 app = Flask(__name__)
 # Upload chunks from the page are 8 MB; allow some headroom, reject anything huge.
@@ -21,6 +25,79 @@ NO_CACHE = {
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+def client_ip():
+    """Best guess of the visitor's public IP behind Render's proxy/Cloudflare."""
+    candidates = [
+        request.headers.get('CF-Connecting-IP'),
+        request.headers.get('True-Client-IP'),
+        (request.headers.get('X-Forwarded-For') or '').split(',')[0].strip(),
+        request.remote_addr,
+    ]
+    for c in candidates:
+        if not c:
+            continue
+        try:
+            return str(ipaddress.ip_address(c.strip()))   # validates: no junk reaches the lookup URL
+        except ValueError:
+            continue
+    return ''
+
+
+_ip_cache = {}          # ip -> (timestamp, info)
+IP_CACHE_TTL = 3600
+
+
+def _get_json(url):
+    req = urllib.request.Request(url, headers={'User-Agent': 'speedtest/1.0'})
+    with urllib.request.urlopen(req, timeout=3) as r:
+        return json.loads(r.read().decode('utf-8', 'replace'))
+
+
+def lookup_ip(ip):
+    """ISP / location for a public IP. Tries two free HTTPS providers; returns {} if both fail."""
+    try:
+        d = _get_json(f'https://ipwho.is/{ip}')
+        if d.get('success'):
+            conn = d.get('connection') or {}
+            return {'isp': conn.get('isp') or conn.get('org') or '',
+                    'asn': conn.get('asn') or '',
+                    'city': d.get('city') or '', 'country': d.get('country') or ''}
+    except Exception:
+        pass
+    try:
+        d = _get_json(f'https://ipapi.co/{ip}/json/')
+        if not d.get('error'):
+            return {'isp': d.get('org') or '', 'asn': d.get('asn') or '',
+                    'city': d.get('city') or '', 'country': d.get('country_name') or ''}
+    except Exception:
+        pass
+    return {}
+
+
+@app.route('/info')
+def info():
+    ip = client_ip()
+    out = {'ip': ip, 'isp': '', 'city': '', 'country': ''}
+    try:
+        public = bool(ip) and ipaddress.ip_address(ip).is_global
+    except ValueError:
+        public = False
+    if public:
+        hit = _ip_cache.get(ip)
+        if hit and time.time() - hit[0] < IP_CACHE_TTL:
+            found = hit[1]
+        else:
+            found = lookup_ip(ip)
+            if found:                       # don't cache failures
+                if len(_ip_cache) > 500:
+                    _ip_cache.clear()
+                _ip_cache[ip] = (time.time(), found)
+        out.update(found)
+    resp = jsonify(out)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @app.route('/ping')
