@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V15</title>
+<title>SPEEDTEST V16</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -48,7 +48,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V15 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V16 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
@@ -277,34 +277,69 @@ let visitor = {ip:'', isp:'', city:'', country:'', mobile:null, via:'', note:''}
 let lastResult = null;
 let conn = {label:'Unknown', how:'Could not be detected'};
 
-// Connection type is worked out automatically; the visitor never has to choose.
-// - Android Chrome reports it directly (navigator.connection.type).
-// - iPhone Safari and desktop browsers report nothing, so we combine the provider's "mobile network"
-//   flag from /info with the kind of device.
-// A web page cannot read the Wi-Fi name (SSID), and cannot tell Wi-Fi from cable on a computer:
-// every browser blocks that.
-function detectConn(){
+// Connection type is worked out automatically; the visitor never has to choose. Sources, best first:
+//  1. navigator.connection.type      (Android Chrome)
+//  2. WebRTC adapter type            (Chrome / Edge on desktop and Android: "wifi", "ethernet", "cellular")
+//  3. provider's "mobile network" flag from /info + kind of device   (works in Safari too)
+//  4. guess from the provider name
+// A web page can never read the Wi-Fi NAME (SSID). Safari and Firefox do not expose the adapter type, so
+// on a computer there they can only say "Wi-Fi or Cable".
+async function rtcNetworkTypes(){
+  if (!window.RTCPeerConnection) return null;
+  let pc;
+  try {
+    pc = new RTCPeerConnection({iceServers: []});           // no STUN server: nothing leaves the browser
+    pc.createDataChannel('x');
+    const gathered = new Promise(res => {
+      const t = setTimeout(res, 2000);
+      pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete'){ clearTimeout(t); res(); } });
+    });
+    await pc.setLocalDescription(await pc.createOffer());
+    await gathered;
+    const types = [];
+    (await pc.getStats()).forEach(s => { if (s.type === 'local-candidate' && s.networkType) types.push(s.networkType); });
+    window.__rtc = types;                                     // shown in "Test details" to help verify on real devices
+    return types;                                             // only the adapter TYPE is read, never an address
+  } catch(e) { return null; }
+  finally { try { pc && pc.close(); } catch(e) {} }
+}
+const RTC_LABEL = {wifi:'Wi-Fi', ethernet:'Cable (Ethernet)', cellular:'Mobile data'};
+
+async function detectConn(){
   const c = navigator.connection;
   if (c && c.type === 'cellular') return {label:'Mobile data',      how:'Detected from your device'};
   if (c && c.type === 'wifi')     return {label:'Wi-Fi',            how:'Detected from your device'};
   if (c && c.type === 'ethernet') return {label:'Cable (Ethernet)', how:'Detected from your device'};
+  // "vpn", "unknown", "bluetooth" adapters are ignored; if exactly one real adapter type is left, that is the answer
+  const types = [...new Set((await rtcNetworkTypes()) || [])].filter(t => RTC_LABEL[t]);
+  if (types.length === 1) return {label: RTC_LABEL[types[0]], how:"Detected from your device's network adapter"};
   const ua = navigator.userAgent || '';
   const phone = /iPhone|iPad|iPod|Android|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   if (visitor.mobile === true)  return {label:'Mobile data', how:'Your provider runs a mobile network'};
   if (visitor.mobile === false) return phone
     ? {label:'Wi-Fi',          how:'Your provider is not a mobile network, so this phone or tablet is on Wi-Fi'}
-    : {label:'Wi-Fi or Cable', how:'Browsers cannot tell Wi-Fi from cable on a computer'};
+    : {label:'Wi-Fi or Cable', how:'This browser cannot tell Wi-Fi from cable on a computer'};
   if (/mobile|mobil|cellular|wireless|gsm|lte/i.test(visitor.isp || ''))
     return {label:'Mobile data (probably)', how:'Guessed from the provider name'};
   const why = visitor.note || (visitor.via ? 'data from ' + visitor.via + ' has no mobile flag' : '');
   return {label:'Unknown', how:'Could not be detected' + (why ? ' (' + why + ')' : '')};
 }
-function renderConn(){
-  conn = detectConn();
-  $('connV').textContent = conn.label;
-  $('connHint').textContent = conn.how + '.';
+let detecting = false, rerun = false, infoReady = false;
+async function renderConn(){
+  if (detecting){ rerun = true; return; }                     // a newer trigger (e.g. /info arrived) re-runs afterwards
+  detecting = true;
+  try {
+    do {
+      rerun = false;
+      conn = await detectConn();
+      if (!infoReady && conn.label === 'Unknown') continue;   // don't flash "Unknown" while /info is still loading
+      $('connV').textContent = conn.label;
+      $('connHint').textContent = conn.how + '.';
+    } while (rerun);
+  } finally { detecting = false; }
 }
 if (navigator.connection && navigator.connection.addEventListener) navigator.connection.addEventListener('change', renderConn);
+renderConn();                                                  // start adapter detection right away, in parallel with /info
 
 (async function loadInfo(){
   try {
@@ -315,6 +350,7 @@ if (navigator.connection && navigator.connection.addEventListener) navigator.con
   $('ipV').textContent  = visitor.ip  || 'unavailable';
   $('ispV').textContent = visitor.isp || (visitor.ip ? 'unknown' : 'unavailable');
   $('locV').textContent = loc || (visitor.ip ? 'unknown' : 'unavailable');
+  infoReady = true;
   renderConn();
 })();
 
@@ -360,7 +396,7 @@ function showDiag(dl, ul){
     `Ping       ${E.ping.textContent} ms   Jitter ${E.jit.textContent} ms`,
     `Download   ${dl.mbps ? dl.mbps.toFixed(1) : '-'} Mbps over ${dl.secs ? dl.secs.toFixed(1) : '-'}s   (per-second: ${fmtS(dl.samples)})`,
     `Upload     ${ul.mbps ? ul.mbps.toFixed(1) : '-'} Mbps over ${ul.secs ? ul.secs.toFixed(1) : '-'}s   (per-second: ${fmtS(ul.samples)})`,
-    `Network    ${net}`,
+    `Network    ${net}   Adapters: ${(window.__rtc || []).join(', ') || 'n/a'}`,
     `Browser    ${navigator.userAgent}`
   ];
   $('diagTxt').textContent = lines.join('\n');
