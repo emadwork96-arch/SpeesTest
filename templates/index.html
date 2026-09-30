@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V14</title>
+<title>SPEEDTEST V15</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -48,7 +48,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V14 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V15 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
@@ -273,7 +273,7 @@ function ulStream(ctx){
 
 // ---------- visitor info (IP / ISP / location / connection type) + copy ----------
 const copyBtn = $('copyBtn');
-let visitor = {ip:'', isp:'', city:'', country:'', mobile:null};
+let visitor = {ip:'', isp:'', city:'', country:'', mobile:null, via:'', note:''};
 let lastResult = null;
 let conn = {label:'Unknown', how:'Could not be detected'};
 
@@ -296,7 +296,8 @@ function detectConn(){
     : {label:'Wi-Fi or Cable', how:'Browsers cannot tell Wi-Fi from cable on a computer'};
   if (/mobile|mobil|cellular|wireless|gsm|lte/i.test(visitor.isp || ''))
     return {label:'Mobile data (probably)', how:'Guessed from the provider name'};
-  return {label:'Unknown', how:'Could not be detected'};
+  const why = visitor.note || (visitor.via ? 'data from ' + visitor.via + ' has no mobile flag' : '');
+  return {label:'Unknown', how:'Could not be detected' + (why ? ' (' + why + ')' : '')};
 }
 function renderConn(){
   conn = detectConn();

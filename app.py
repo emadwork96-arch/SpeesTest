@@ -45,7 +45,7 @@ def client_ip():
     return ''
 
 
-_ip_cache = {}          # ip -> (timestamp, info)
+_ip_cache = {}          # ip -> (expires_at, info)
 IP_CACHE_TTL = 3600
 
 
@@ -59,20 +59,30 @@ def lookup_ip(ip):
     """ISP / location / mobile-network flag for a public IP.
 
     Tries three free HTTPS providers in order and returns {} if all fail.
-    'mobile' is True/False when the provider knows, None when it does not
-    (the page then asks the user to pick Wi-Fi / Mobile data).
+    'mobile' is True/False when the provider knows, None when it does not.
+    'via' names the provider that answered and 'note' says why earlier ones did not,
+    so the page can show the real reason instead of a bare "Unknown".
     """
+    why = []
+
+    def fail(name, e):
+        why.append(f'{name}: {type(e).__name__} {str(e)[:60]}')
+
     try:
         d = _get_json(f'https://api.ipapi.is/?q={ip}')
         comp, asn, loc = d.get('company') or {}, d.get('asn') or {}, d.get('location') or {}
         isp = comp.get('name') or asn.get('org') or ''
         if isp:
             mob = d.get('is_mobile')
+            if not isinstance(mob, bool):
+                why.append(f'ipapi.is: no is_mobile flag ({mob!r})')
             return {'isp': isp, 'asn': asn.get('asn') or '',
                     'city': loc.get('city') or '', 'country': loc.get('country') or '',
-                    'mobile': mob if isinstance(mob, bool) else None}
-    except Exception:
-        pass
+                    'mobile': mob if isinstance(mob, bool) else None,
+                    'via': 'ipapi.is', 'note': '; '.join(why)}
+        why.append('ipapi.is: empty answer ' + str(d.get('error') or d.get('message') or '')[:60])
+    except Exception as e:
+        fail('ipapi.is', e)
     try:
         d = _get_json(f'https://ipwho.is/{ip}')
         if d.get('success'):
@@ -80,38 +90,41 @@ def lookup_ip(ip):
             return {'isp': conn.get('isp') or conn.get('org') or '',
                     'asn': conn.get('asn') or '',
                     'city': d.get('city') or '', 'country': d.get('country') or '',
-                    'mobile': None}
-    except Exception:
-        pass
+                    'mobile': None, 'via': 'ipwho.is', 'note': '; '.join(why)}
+        why.append('ipwho.is: ' + str(d.get('message') or 'not successful')[:60])
+    except Exception as e:
+        fail('ipwho.is', e)
     try:
         d = _get_json(f'https://ipapi.co/{ip}/json/')
         if not d.get('error'):
             return {'isp': d.get('org') or '', 'asn': d.get('asn') or '',
                     'city': d.get('city') or '', 'country': d.get('country_name') or '',
-                    'mobile': None}
-    except Exception:
-        pass
-    return {}
+                    'mobile': None, 'via': 'ipapi.co', 'note': '; '.join(why)}
+        why.append('ipapi.co: ' + str(d.get('reason') or d.get('error'))[:60])
+    except Exception as e:
+        fail('ipapi.co', e)
+    return {'note': '; '.join(why)}
 
 
 @app.route('/info')
 def info():
     ip = client_ip()
-    out = {'ip': ip, 'isp': '', 'city': '', 'country': '', 'mobile': None}
+    out = {'ip': ip, 'isp': '', 'city': '', 'country': '', 'mobile': None, 'via': '', 'note': ''}
     try:
         public = bool(ip) and ipaddress.ip_address(ip).is_global
     except ValueError:
         public = False
     if public:
         hit = _ip_cache.get(ip)
-        if hit and time.time() - hit[0] < IP_CACHE_TTL:
+        if hit and hit[0] > time.time():
             found = hit[1]
         else:
             found = lookup_ip(ip)
-            if found:                       # don't cache failures
+            if found.get('isp'):                 # never cache total failures
                 if len(_ip_cache) > 500:
                     _ip_cache.clear()
-                _ip_cache[ip] = (time.time(), found)
+                ttl = IP_CACHE_TTL if found.get('mobile') is not None else 60   # incomplete answer: retry soon
+                _ip_cache[ip] = (time.time() + ttl, found)
         out.update(found)
     resp = jsonify(out)
     resp.headers['Cache-Control'] = 'no-store'
