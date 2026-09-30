@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V16</title>
+<title>SPEEDTEST V17</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -17,22 +17,26 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 .stat.err b{font-size:20px;color:#f87171}
 .mid{display:flex;justify-content:center;flex-wrap:wrap;gap:28px;padding:14px 0;border-top:1px solid #1e1e1e;border-bottom:1px solid #1e1e1e;margin:16px 0;font-size:12px;color:#666}
 .mid b{color:#fff}
-.gauge{position:relative;width:min(360px,80vw);aspect-ratio:1;margin:0 auto}
-.gauge svg{width:100%;height:100%}
-/* the 135deg rotation lives in the SVG transform attribute (same result in every browser, incl. Safari) */
-.track{fill:none;stroke:#1c1c1c;stroke-width:14;stroke-linecap:round;stroke-dasharray:622 207}
-.prog{fill:none;stroke:url(#g);stroke-width:14;stroke-linecap:round}
-.needle{will-change:transform}
-.needle{position:absolute;left:50%;top:50%;width:2px;height:38%;background:#fff;transform-origin:bottom center}
-.hub{position:absolute;left:50%;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
+.gauge{position:relative;width:min(400px,100%);aspect-ratio:1;margin:0 auto}
+.gauge svg{width:100%;height:100%;overflow:visible}
+/* dial: ticks that light up, numbers that swell as the pointer passes, a peak marker */
+.tb{stroke:#262626;stroke-width:3;stroke-linecap:round}
+.tbm{stroke:#3d3d3d;stroke-width:3.4;stroke-linecap:round}
+.tl{stroke:url(#g);stroke-width:3.6;stroke-linecap:round}   /* opacity is set per frame from JS (a CSS value here would override it) */
+.gauge.up .tl{stroke:url(#g2)}
+.lab{font-size:14px;font-weight:700;fill:#fff;text-anchor:middle;font-variant-numeric:tabular-nums}
+@keyframes labin{from{opacity:0}to{opacity:1}}
+#labels.fade{animation:labin .35s ease}
+.tip{fill:#67e8f9}
+.gauge.up .tip{fill:#f9a8d4}
+#peak path{fill:#fff}
 .btnW{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 .go{width:128px;height:128px;border-radius:50%;background:#181818;border:1.5px solid #2a2a2a;color:#fff;font-weight:700;font-size:20px;cursor:pointer;display:grid;place-items:center}
 .go:hover{border-color:#22d3ee}
-.status{position:absolute;left:50%;top:64%;transform:translateX(-50%);text-align:center;display:none;white-space:nowrap}
+.status{position:absolute;left:50%;top:61%;transform:translateX(-50%);text-align:center;display:none;white-space:nowrap}
 .status small{display:block;font-size:10px;color:#666;letter-spacing:.14em;font-weight:700}
-.status b{font-size:26px;font-variant-numeric:tabular-nums}
+.status b{font-size:24px;font-variant-numeric:tabular-nums}
 /* upload = purple -> pink, download keeps the original cyan */
-.prog.up{stroke:url(#g2)}
 .ul-num{background:linear-gradient(90deg,#a78bfa,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .stat.err .ul-num{-webkit-text-fill-color:#f87171;color:#f87171}
 .info{margin-top:14px;border:1px solid #1e1e1e;border-radius:14px;overflow:hidden;font-size:12px}
@@ -48,7 +52,7 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V16 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V17 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
@@ -60,14 +64,23 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
       <div>Jitter <b id="jit">—</b> ms</div>
       <div><span id="phase" style="color:#22d3ee">IDLE</span></div>
     </div>
-    <div class="gauge">
-      <svg viewBox="0 0 360 360"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
-        <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs>
-        <circle class="track" cx="180" cy="180" r="132" transform="rotate(135 180 180)"></circle>
-        <circle id="prog" class="prog" cx="180" cy="180" r="132" stroke-dasharray="0 1000" transform="rotate(135 180 180)"></circle>
+    <div class="gauge" id="gauge">
+      <svg viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="g"  gradientUnits="userSpaceOnUse" x1="60" y1="0" x2="340" y2="0"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+          <linearGradient id="g2" gradientUnits="userSpaceOnUse" x1="60" y1="0" x2="340" y2="0"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+          <filter id="glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g id="ticksBase"></g>
+        <g id="ticksLit"></g>
+        <g id="labels"></g>
+        <g id="peak" style="opacity:0;transition:opacity .3s"><path d="M200 57 l-4.5 -8 h9 z"/></g>
+        <g id="needle" transform="rotate(-135 200 200)">
+          <path d="M196 200 L204 200 L201.2 94 L198.8 94 Z" fill="#fff"/>
+          <circle class="tip" cx="200" cy="91" r="5" filter="url(#glow)"/>
+        </g>
+        <circle cx="200" cy="200" r="9" fill="#fff"/>
       </svg>
-      <div id="needle" class="needle" style="transform:translate(-50%,-100%) rotate(-135deg)"></div>
-      <div class="hub"></div>
       <div class="btnW" id="btnW"><button id="go" class="go">GO</button></div>
       <div class="status" id="status"><small id="st">PING</small><b id="sd">…</b></div>
     </div>
@@ -96,33 +109,116 @@ const CFG = {
   ulMB: 8,               // MB per upload request
   minDur: 8000,          // ms: earliest a phase may stop (if speed is stable)
   maxDur: 15000,         // ms: hard stop per phase
-  grace: 2500,           // ms ignored at start (TCP slow-start + mobile radio ramp-up)
-  maxGauge: 250          // Mbps at full gauge
+  grace: 2500            // ms ignored at start (TCP slow-start + mobile radio ramp-up)
 };
 
 // ---------- UI ----------
 const $ = id => document.getElementById(id);
-const E = {dl:$('dl'), ul:$('ul'), ping:$('ping'), jit:$('jit'), phase:$('phase'), needle:$('needle'),
-  prog:$('prog'), go:$('go'), btnW:$('btnW'), status:$('status'), st:$('st'), sd:$('sd'), note:$('note'),
+const E = {dl:$('dl'), ul:$('ul'), ping:$('ping'), jit:$('jit'), phase:$('phase'),
+  go:$('go'), btnW:$('btnW'), status:$('status'), st:$('st'), sd:$('sd'), note:$('note'),
   dlBox:$('dlBox'), ulBox:$('ulBox')};
 let cur=-135, tar=-135, shown={dl:0, ul:0}, target={dl:0, ul:0}, testing=false;
 
-function setGauge(mbps){
-  // square-root scale so low speeds (e.g. 5–20 Mbps upload) still move the needle
-  const pct = Math.sqrt(Math.min(CFG.maxGauge, Math.max(0, mbps)) / CFG.maxGauge);
-  tar = -135 + 270*pct;     // only the TARGET is set here; needle and arc both follow it in render()
+// ---------- the dial ----------
+// Numbers sit on the outer ring at the SAME angles the pointer uses, so the pointer always aims at the
+// number of the real speed. The scale is a square-root curve (low speeds get room) and it re-ranges
+// by itself: when the speed nears the top of the dial, the whole dial grows to the next range.
+const NS = 'http://www.w3.org/2000/svg', CX = 200;
+const A0 = -135, SPAN = 270, STEP = 5, NT = SPAN / STEP + 1;       // 55 ticks, one every 5 degrees
+const R_IN = 112, R_OUT = 128, R_LAB = 162;
+const RANGES = [
+  {max: 50,   labels: [0, 2, 5, 10, 20, 30, 40, 50]},
+  {max: 100,  labels: [0, 5, 10, 20, 30, 50, 75, 100]},
+  {max: 250,  labels: [0, 5, 10, 25, 50, 100, 150, 200, 250]},
+  {max: 500,  labels: [0, 10, 25, 50, 100, 200, 300, 400, 500]},
+  {max: 1000, labels: [0, 25, 100, 200, 400, 600, 800, 1000]}
+];
+let rangeIdx = 1, peakVal = 0, peakTar = A0, peakCur = A0, needsDraw = true;
+const pol = (r, deg) => [CX + r * Math.sin(deg * Math.PI / 180), CX - r * Math.cos(deg * Math.PI / 180)];
+const angleOf = v => A0 + SPAN * Math.sqrt(Math.min(1, Math.max(0, v / RANGES[rangeIdx].max)));
+const needleG = $('needle'), peakG = $('peak'), labelsG = $('labels');
+
+const ticks = [];
+for (let i = 0; i < NT; i++){
+  const a = A0 + i * STEP, major = i % 9 === 0;
+  const [x1, y1] = pol(major ? R_IN - 3 : R_IN, a), [x2, y2] = pol(major ? R_OUT + 2 : R_OUT, a);
+  const base = document.createElementNS(NS, 'line');
+  base.setAttribute('class', major ? 'tbm' : 'tb');
+  for (const [k, v] of [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2]]) base.setAttribute(k, v.toFixed(2));
+  $('ticksBase').appendChild(base);
+  const [lx1, ly1] = pol(R_IN, a), [lx2, ly2] = pol(R_OUT, a);
+  const lit = document.createElementNS(NS, 'line');
+  lit.setAttribute('class', 'tl'); lit.setAttribute('stroke-opacity', '0');
+  for (const [k, v] of [['x1', lx1], ['y1', ly1], ['x2', lx2], ['y2', ly2]]) lit.setAttribute(k, v.toFixed(2));
+  $('ticksLit').appendChild(lit);
+  ticks.push({a, l: lit, op: 0, len: R_OUT});
 }
+
+let labs = [];
+function buildLabels(){
+  labelsG.textContent = ''; labs = [];
+  for (const v of RANGES[rangeIdx].labels){
+    const a = angleOf(v), [x, y] = pol(R_LAB, a);
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('class', 'lab'); t.setAttribute('dy', '.35em'); t.textContent = v;
+    labelsG.appendChild(t); labs.push({a, x, y, t});
+  }
+  labelsG.classList.remove('fade'); void labelsG.getBoundingClientRect(); labelsG.classList.add('fade');
+  needsDraw = true;
+}
+
+function setGauge(mbps){
+  const v = Math.max(0, mbps);
+  while (rangeIdx < RANGES.length - 1 && v > RANGES[rangeIdx].max * 0.92){ rangeIdx++; buildLabels(); }
+  if (v > peakVal) peakVal = v;
+  tar = angleOf(v);                                     // only TARGETS are set here; render() eases toward them
+  peakTar = peakVal > 0 ? angleOf(peakVal) : A0;
+}
+// new phase: forget the peak and pick the smallest range that fits what we expect
+function gaugeReset(expected){
+  peakVal = 0;
+  let i = 1;
+  while (i < RANGES.length - 1 && RANGES[i].max * 0.92 < expected) i++;
+  if (i !== rangeIdx){ rangeIdx = i; buildLabels(); }
+  setGauge(0);
+}
+
+function draw(){
+  needleG.setAttribute('transform', `rotate(${cur.toFixed(2)} ${CX} ${CX})`);
+  for (const t of ticks){
+    const op = Math.min(1, Math.max(0, (cur - t.a) / STEP));          // lit up to exactly where the pointer is
+    const d = Math.abs(t.a - cur);
+    const len = R_OUT + (op > 0 ? 10 * Math.exp(-(d / 11) * (d / 11)) : 0);   // ticks swell just behind the pointer
+    if (op !== t.op){ t.l.setAttribute('stroke-opacity', op.toFixed(3)); t.op = op; }
+    if (Math.abs(len - t.len) > 0.05){
+      const [x2, y2] = pol(len, t.a);
+      t.l.setAttribute('x2', x2.toFixed(2)); t.l.setAttribute('y2', y2.toFixed(2)); t.len = len;
+    }
+  }
+  for (const L of labs){                                              // the number under the pointer swells and glows
+    const d = Math.abs(L.a - cur);
+    const s = 1 + 0.6 * Math.exp(-(d / 16) * (d / 16));
+    const o = 0.3 + 0.7 * Math.exp(-(d / 22) * (d / 22));
+    L.t.setAttribute('transform', `translate(${L.x.toFixed(1)} ${L.y.toFixed(1)}) scale(${s.toFixed(3)})`);
+    L.t.setAttribute('opacity', o.toFixed(2));
+  }
+  peakG.setAttribute('transform', `rotate(${peakCur.toFixed(2)} ${CX} ${CX})`);
+  peakG.style.opacity = peakVal > 0 ? '1' : '0';
+}
+
 function fmt(v){ return v >= 100 ? v.toFixed(0) : v.toFixed(1); }
-let lastFrame = performance.now();
+let lastFrame = performance.now(), drawnCur = NaN, drawnPeak = NaN;
 function render(now){
   // Time-based easing: same feel at 30, 60 or 120 fps (phones differ), no frame-rate dependent lag.
   const dt = Math.min(0.1, Math.max(0, ((now || performance.now()) - lastFrame) / 1000));
   lastFrame = now || performance.now();
-  cur += (tar - cur) * (1 - Math.exp(-dt * 7));
-  // Needle AND arc are drawn from the same animated value in the same frame, so they can never drift apart.
-  const pct = Math.min(1, Math.max(0, (cur + 135) / 270));
-  E.needle.style.transform = `translate(-50%,-100%) rotate(${cur.toFixed(2)}deg)`;
-  E.prog.setAttribute('stroke-dasharray', `${(pct * 622).toFixed(2)} 1000`);
+  cur     += (tar     - cur)     * (1 - Math.exp(-dt * 7));
+  peakCur += (peakTar - peakCur) * (1 - Math.exp(-dt * 5));
+  // Pointer, lit ticks and numbers are all drawn from the same animated value in the same frame,
+  // so they can never drift apart. Nothing is redrawn while the dial is at rest.
+  if (needsDraw || Math.abs(cur - drawnCur) > 0.004 || Math.abs(peakCur - drawnPeak) > 0.004){
+    draw(); drawnCur = cur; drawnPeak = peakCur; needsDraw = false;
+  }
   for (const k of ['dl','ul']){
     if (target[k] > 0){
       shown[k] += (target[k] - shown[k]) * (1 - Math.exp(-dt * 8));
@@ -131,13 +227,14 @@ function render(now){
   }
   requestAnimationFrame(render);
 }
+buildLabels();
 requestAnimationFrame(render);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function setPhase(t){
   E.phase.textContent = t; E.st.textContent = t;
   const up = t === 'UPLOAD';
   E.phase.style.color = up ? '#f472b6' : '#22d3ee';
-  E.prog.classList.toggle('up', up);
+  $('gauge').classList.toggle('up', up);
 }
 function showError(k, msg){
   target[k] = 0;
@@ -414,7 +511,7 @@ E.go.onclick = async () => {
   testing = true;
   E.btnW.style.display = 'none'; E.status.style.display = 'block'; E.note.textContent = '';
   for (const k of ['dl','ul']){ target[k] = 0; shown[k] = 0; E[k].textContent = '—'; E[k+'Box'].classList.remove('err'); }
-  E.ping.textContent = '—'; E.jit.textContent = '—'; setGauge(0);
+  E.ping.textContent = '—'; E.jit.textContent = '—'; gaugeReset(0);
   let dl = {mbps:0}, ul = {mbps:0};
   $('diag').style.display = 'none';
   copyBtn.disabled = true; lastResult = null;
@@ -422,11 +519,11 @@ E.go.onclick = async () => {
   try {
     await pingTest();
 
-    setPhase('DOWNLOAD'); E.sd.textContent = '…'; setGauge(0);
+    setPhase('DOWNLOAD'); E.sd.textContent = '…'; gaugeReset(0);
     dl = await measure('dl', dlStream);
     if (dl.error) showError('dl', dl.error); else target.dl = dl.mbps;
 
-    setPhase('UPLOAD'); E.sd.textContent = '…'; setGauge(0);
+    setPhase('UPLOAD'); E.sd.textContent = '…'; gaugeReset((dl.mbps || 0) * 0.9);
     await sleep(300);
     if (!ulBlob) ulBlob = makeUploadBlob();
     ul = await measure('ul', ulStream);
@@ -442,14 +539,14 @@ E.go.onclick = async () => {
     }
     setPhase('DONE');
     E.sd.textContent = `${dl.mbps ? fmt(dl.mbps) : '—'} / ${ul.mbps ? fmt(ul.mbps) : '—'}`;
-    setGauge(0);
+    gaugeReset(0);
     setTimeout(() => {
       E.status.style.display = 'none'; E.btnW.style.display = 'block';
       E.go.textContent = 'AGAIN'; testing = false;
     }, 1200);
   }
 };
-setGauge(0);
+gaugeReset(0);
 </script>
 </body>
 </html>
