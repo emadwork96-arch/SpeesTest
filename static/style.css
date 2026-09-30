@@ -116,3 +116,16 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 .sitefoot .langs a[aria-current="true"]{color:var(--text);font-weight:700}
 .sitefoot p{margin-top:10px}
 @media (max-width:480px){.inner{padding:22px 18px}.hero h1{font-size:22px}}
+
+/* ---------- test progress: one bar, three stages, time left ---------- */
+.prog{position:absolute;left:8%;right:8%;bottom:1%;display:none}
+.prog.show{display:block}
+html[dir="rtl"] .prog{direction:rtl}
+.segs{display:flex;gap:4px}
+.seg{height:6px;border-radius:3px;background:var(--tick);overflow:hidden;opacity:.55;transition:opacity .3s}
+.seg.on{opacity:1}
+.seg i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--g1),var(--g2));transition:width .25s linear}
+.seg.up i{background:linear-gradient(90deg,var(--u1),var(--u2))}
+.plabels{display:flex;gap:4px;margin-top:5px;font-size:10px;color:var(--muted);text-align:center}
+.plabels span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pinfo{display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}

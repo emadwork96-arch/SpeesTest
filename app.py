@@ -30,7 +30,7 @@ ADSENSE_CLIENT = os.environ.get('ADSENSE_CLIENT', '').strip()          # ca-pub-
 ADSENSE_SLOT_TOP = os.environ.get('ADSENSE_SLOT_TOP', '').strip()      # optional manual ad units
 ADSENSE_SLOT_BOTTOM = os.environ.get('ADSENSE_SLOT_BOTTOM', '').strip()
 MAX_BYTES_PER_HOUR = int(float(os.environ.get('MAX_MB_PER_HOUR', '6000')) * 1024 * 1024)   # per visitor IP
-ASSET_VERSION = os.environ.get('ASSET_VERSION', '19')
+ASSET_VERSION = os.environ.get('ASSET_VERSION', '20')
 if DEFAULT_LANG not in content.LANGS:
     DEFAULT_LANG = 'en'
 

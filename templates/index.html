@@ -32,6 +32,15 @@
       </svg>
       <div class="btnW" id="btnW"><button id="go" class="go">Go</button></div>
       <div class="status" id="status"><small id="st">Ping</small><b id="sd">…</b></div>
+      <div class="prog" id="prog" aria-hidden="true">
+        <div class="segs">
+          <div class="seg" id="seg-PING" style="flex:1"><i></i></div>
+          <div class="seg" id="seg-DOWNLOAD" style="flex:5"><i></i></div>
+          <div class="seg up" id="seg-UPLOAD" style="flex:5"><i></i></div>
+        </div>
+        <div class="plabels"><span style="flex:1" data-i18n="lbl.ping">Ping</span><span style="flex:5" data-i18n="lbl.download">Download</span><span style="flex:5" data-i18n="lbl.upload">Upload</span></div>
+        <div class="pinfo"><span id="pStep"></span><span id="pLeft"></span></div>
+      </div>
     </div>
     <div class="note" id="note"></div>
     <div class="info">

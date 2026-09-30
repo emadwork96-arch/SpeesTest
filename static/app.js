@@ -12,6 +12,7 @@ const CFG = {
 // Every visible string lives here. Add a language = add one block + one <option> in the header.
 const I18N = {
   en: {
+    'prog.step':'Step {n} of 3', 'prog.left':'about {s} s left', 'prog.almost':'almost done…', 'prog.done':'Complete',
     title:'Internet Speed Test', 'lbl.download':'Download', 'lbl.upload':'Upload', 'lbl.ping':'Ping', 'lbl.jitter':'Jitter',
     'btn.go':'Go', 'btn.again':'Again', 'btn.copy':'Copy result', 'btn.copied':'Copied ✓', 'btn.copyfail':'Copy failed',
     'info.ip':'IP address', 'info.isp':'Provider (ISP)', 'info.loc':'Location', 'info.conn':'Connection',
@@ -34,6 +35,7 @@ const I18N = {
     'dg.adapters':'Adapters', 'dg.browser':'Browser', 'dg.na':'n/a (no request finished)'
   },
   ar: {
+    'prog.step':'المرحلة {n} من 3', 'prog.left':'متبقي حوالي {s} ث', 'prog.almost':'على وشك الانتهاء…', 'prog.done':'اكتمل',
     title:'فحص سرعة الإنترنت', 'lbl.download':'التنزيل', 'lbl.upload':'الرفع', 'lbl.ping':'البنق', 'lbl.jitter':'التذبذب',
     'btn.go':'ابدأ', 'btn.again':'إعادة', 'btn.copy':'نسخ النتيجة', 'btn.copied':'تم النسخ ✓', 'btn.copyfail':'تعذّر النسخ',
     'info.ip':'عنوان IP', 'info.isp':'مزوّد الخدمة', 'info.loc':'الموقع', 'info.conn':'نوع الاتصال',
@@ -56,6 +58,7 @@ const I18N = {
     'dg.adapters':'المحوّلات', 'dg.browser':'المتصفح', 'dg.na':'غير متاح (لم يكتمل أي طلب)'
   },
   tr: {
+    'prog.step':'Adım {n} / 3', 'prog.left':'yaklaşık {s} sn kaldı', 'prog.almost':'neredeyse bitti…', 'prog.done':'Tamamlandı',
     title:'İnternet Hız Testi', 'lbl.download':'İndirme', 'lbl.upload':'Yükleme', 'lbl.ping':'Ping', 'lbl.jitter':'Titreşim',
     'btn.go':'Başla', 'btn.again':'Tekrar', 'btn.copy':'Sonucu kopyala', 'btn.copied':'Kopyalandı ✓', 'btn.copyfail':'Kopyalanamadı',
     'info.ip':'IP adresi', 'info.isp':'Servis sağlayıcı', 'info.loc':'Konum', 'info.conn':'Bağlantı',
@@ -78,6 +81,7 @@ const I18N = {
     'dg.adapters':'Bağdaştırıcılar', 'dg.browser':'Tarayıcı', 'dg.na':'yok (hiçbir istek tamamlanmadı)'
   },
   fr: {
+    'prog.step':'Étape {n} sur 3', 'prog.left':'environ {s} s restantes', 'prog.almost':'presque terminé…', 'prog.done':'Terminé',
     title:'Test de débit Internet', 'lbl.download':'Téléchargement', 'lbl.upload':'Envoi', 'lbl.ping':'Ping', 'lbl.jitter':'Gigue',
     'btn.go':'Démarrer', 'btn.again':'Relancer', 'btn.copy':'Copier le résultat', 'btn.copied':'Copié ✓', 'btn.copyfail':'Échec de la copie',
     'info.ip':'Adresse IP', 'info.isp':'Fournisseur (FAI)', 'info.loc':'Localisation', 'info.conn':'Connexion',
@@ -100,6 +104,7 @@ const I18N = {
     'dg.adapters':'Adaptateurs', 'dg.browser':'Navigateur', 'dg.na':'n/d (aucune requête terminée)'
   },
   fa: {
+    'prog.step':'مرحله {n} از 3', 'prog.left':'حدود {s} ثانیه مانده', 'prog.almost':'تقریباً تمام شد…', 'prog.done':'کامل شد',
     title:'تست سرعت اینترنت', 'lbl.download':'دانلود', 'lbl.upload':'آپلود', 'lbl.ping':'پینگ', 'lbl.jitter':'جیتر',
     'btn.go':'شروع', 'btn.again':'دوباره', 'btn.copy':'کپی نتیجه', 'btn.copied':'کپی شد ✓', 'btn.copyfail':'کپی ناموفق بود',
     'info.ip':'آدرس IP', 'info.isp':'ارائه‌دهنده (ISP)', 'info.loc':'موقعیت', 'info.conn':'نوع اتصال',
@@ -278,9 +283,37 @@ function showError(k, msg){
   paintErrors(); paintNote();
 }
 
+// ---------- progress bar ----------
+// Three stages on one bar (ping is short, download and upload are long). Download/upload stop by themselves as soon as the
+// speed is stable (not before minDur), so the bar fills over minDur and then waits at ~94% for the stop.
+const PROG_ORDER = ['PING', 'DOWNLOAD', 'UPLOAD'];
+const segFill = {}, segBox = {};
+for (const c of PROG_ORDER){ segBox[c] = $('seg-' + c); segFill[c] = segBox[c].firstElementChild; }
+let progState = {code:'PING', f:0, left:0, done:false};
+function paintProg(){
+  const idx = PROG_ORDER.indexOf(progState.code);
+  PROG_ORDER.forEach((c, i) => {
+    const v = progState.done ? 1 : i < idx ? 1 : i === idx ? progState.f : 0;
+    segFill[c].style.width = (v * 100).toFixed(1) + '%';
+    segBox[c].classList.toggle('on', progState.done || i === idx);
+  });
+  $('pStep').textContent = progState.done ? t('prog.done') : t('prog.step', {n: idx + 1});
+  $('pLeft').textContent = progState.done ? '' : progState.left <= 1.5 ? t('prog.almost') : t('prog.left', {s: Math.ceil(progState.left)});
+}
+function setProg(code, f, left){ progState = {code, f: Math.max(0, Math.min(1, f)), left, done: false}; paintProg(); }
+function progDone(){ progState.done = true; paintProg(); }
+function progressMeasure(kind, el){
+  const code = kind === 'dl' ? 'DOWNLOAD' : 'UPLOAD';
+  const minD = CFG.minDur, maxD = CFG.maxDur;
+  const f = el < minD ? 0.94 * el / minD : 0.94 + 0.06 * Math.min(1, (el - minD) / (maxD - minD));
+  const cur = el < minD ? (minD - el) / 1000 : 1;                        // past minDur it can end any moment
+  const later = code === 'DOWNLOAD' ? minD / 1000 : 0;                   // upload still to come (typical length)
+  setProg(code, f, cur + later);
+}
+
 // ---------- ping ----------
 async function pingTest(){
-  setPhase('PING'); E.sd.textContent = '…';
+  setPhase('PING'); E.sd.textContent = '…'; setProg('PING', 0, 1.5 + CFG.minDur / 500);
   const times = [];
   for (let i=0; i<10; i++){
     const s = performance.now();
@@ -290,6 +323,7 @@ async function pingTest(){
       if (r.ok) times.push(performance.now() - s);
     } catch(e) {}
     if (times.length) E.ping.textContent = Math.round(Math.min(...times));
+    setProg('PING', (i + 1) / 10, (1 - (i + 1) / 10) * 1.5 + CFG.minDur / 500);
     await sleep(60);
   }
   if (!times.length){ E.ping.textContent = '—'; return; }
@@ -318,6 +352,7 @@ function measure(kind, startStream){
 
     const iv = setInterval(() => {
       const now = performance.now(), el = now - t0;
+      progressMeasure(kind, el);
       if (!gT && el >= CFG.grace){ gT = now; gB = ctx.bytes; sT = now; sB = ctx.bytes; }
       if (gT && now - sT >= 1000){
         samples.push((ctx.bytes - sB) * 8 / ((now - sT) / 1000) / 1e6);
@@ -556,7 +591,7 @@ $('diagCopy').onclick = async () => {
 E.go.onclick = async () => {
   if (testing) return;
   testing = true; { const ls = $('langSel'); if (ls) ls.disabled = true; }
-  E.btnW.style.display = 'none'; E.status.style.display = 'block'; noteState = null; errs = {dl:null, ul:null}; paintNote();
+  E.btnW.style.display = 'none'; E.status.style.display = 'block'; $('prog').classList.add('show'); setProg('PING', 0, 1.5 + CFG.minDur / 500); noteState = null; errs = {dl:null, ul:null}; paintNote();
   for (const k of ['dl','ul']){ target[k] = 0; shown[k] = 0; E[k].textContent = '—'; E[k+'Box'].classList.remove('err'); }
   E.ping.textContent = '—'; E.jit.textContent = '—'; gaugeReset(0);
   let dl = {mbps:0}, ul = {mbps:0};
@@ -566,11 +601,11 @@ E.go.onclick = async () => {
   try {
     await pingTest();
 
-    setPhase('DOWNLOAD'); E.sd.textContent = '…'; gaugeReset(0);
+    setPhase('DOWNLOAD'); E.sd.textContent = '…'; gaugeReset(0); setProg('DOWNLOAD', 0, CFG.minDur / 500);
     dl = await measure('dl', dlStream);
     if (dl.error) showError('dl', dl.error); else target.dl = dl.mbps;
 
-    setPhase('UPLOAD'); E.sd.textContent = '…'; gaugeReset((dl.mbps || 0) * 0.9);
+    setPhase('UPLOAD'); E.sd.textContent = '…'; setProg('UPLOAD', 0, CFG.minDur / 1000); gaugeReset((dl.mbps || 0) * 0.9);
     await sleep(300);
     if (!ulBlob) ulBlob = makeUploadBlob();
     ul = await measure('ul', ulStream);
@@ -584,11 +619,11 @@ E.go.onclick = async () => {
                     ts: Date.now()};
       copyBtn.disabled = false;
     }
-    setPhase('DONE');
+    setPhase('DONE'); progDone();
     E.sd.textContent = `${dl.mbps ? fmt(dl.mbps) : '—'} / ${ul.mbps ? fmt(ul.mbps) : '—'}`;
     gaugeReset(0);
     setTimeout(() => {
-      E.status.style.display = 'none'; E.btnW.style.display = 'block';
+      E.status.style.display = 'none'; $('prog').classList.remove('show'); E.btnW.style.display = 'block';
       goKey = 'btn.again'; E.go.textContent = t(goKey); testing = false;
       { const ls = $('langSel'); if (ls) ls.disabled = false; }
       loadAds();
@@ -601,7 +636,7 @@ function applyLang(l, save){
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   E.go.textContent = t(goKey);
   E.phase.textContent = t('phase.' + phaseCode); E.st.textContent = t('phase.' + phaseCode);
-  paintNote(); paintErrors(); paintInfo(); if (infoReady) paintConn();
+  paintNote(); paintErrors(); paintInfo(); if (infoReady) paintConn(); paintProg();
   if (lastDiag) try { showDiag(lastDiag[0], lastDiag[1]); } catch(e) {}
   if (lastResult) copyBtn.textContent = t('btn.copy');
   if (save){ try { localStorage.setItem('st_lang', lang); } catch(e) {} }
