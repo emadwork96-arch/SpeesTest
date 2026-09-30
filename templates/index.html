@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPEEDTEST V11</title>
+<title>SPEEDTEST V12</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
@@ -29,17 +29,31 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
 .status{position:absolute;left:50%;top:64%;transform:translateX(-50%);text-align:center;display:none;white-space:nowrap}
 .status small{display:block;font-size:10px;color:#666;letter-spacing:.14em;font-weight:700}
 .status b{font-size:26px;font-variant-numeric:tabular-nums}
+/* upload = purple -> pink, download keeps the original cyan */
+.prog.up{stroke:url(#g2)}
+.ul-num{background:linear-gradient(90deg,#a78bfa,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.stat.err .ul-num{-webkit-text-fill-color:#f87171;color:#f87171}
+.info{margin-top:14px;border:1px solid #1e1e1e;border-radius:14px;overflow:hidden;font-size:12px}
+.info .row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #1a1a1a}
+.info .row:last-child{border-bottom:0}
+.info .row span{color:#666;flex:none}
+.info .row b{font-weight:500;text-align:right;word-break:break-word;min-width:0}
+.info input{flex:1;min-width:0;max-width:220px;background:#0e0e0e;border:1px solid #242424;border-radius:8px;color:#fff;font-size:12px;padding:6px 10px;text-align:right}
+.info input:focus{outline:none;border-color:#a78bfa}
+.hint{font-size:10px;color:#555;margin-top:6px;text-align:center}
+.copy{display:block;width:100%;margin-top:14px;padding:13px;border-radius:14px;border:0;font-size:14px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(90deg,#8b5cf6,#ec4899)}
+.copy:disabled{opacity:.3;cursor:default}
 .note{min-height:18px;text-align:center;font-size:12px;color:#f87171;margin-top:6px}
 .foot{padding:16px 28px;background:#0e0e0e;border-top:1px solid #1c1c1c;display:flex;justify-content:space-between;font-size:11px;color:#666}
 </style>
 </head>
 <body>
-<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V11 • Multi-stream</div></header>
+<header><div style="font-weight:800">SPEEDTEST</div><div style="font-size:11px;color:#555">V12 • Multi-stream</div></header>
 <div class="card">
   <div class="inner">
     <div class="stats">
       <div class="stat" id="dlBox"><small>DOWNLOAD</small><b id="dl">—</b></div>
-      <div class="stat" id="ulBox" style="text-align:right"><small>UPLOAD</small><b id="ul">—</b></div>
+      <div class="stat" id="ulBox" style="text-align:right"><small>UPLOAD</small><b id="ul" class="ul-num">—</b></div>
     </div>
     <div class="mid">
       <div>Ping <b id="ping">—</b> ms</div>
@@ -47,7 +61,8 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
       <div><span id="phase" style="color:#22d3ee">IDLE</span></div>
     </div>
     <div class="gauge">
-      <svg viewBox="0 0 360 360"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs>
+      <svg viewBox="0 0 360 360"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+        <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs>
         <circle class="track" cx="180" cy="180" r="132"></circle>
         <circle id="prog" class="prog" cx="180" cy="180" r="132" stroke-dasharray="0 1000"></circle>
       </svg>
@@ -57,6 +72,14 @@ header{max-width:720px;width:100%;margin:0 auto;display:flex;justify-content:spa
       <div class="status" id="status"><small id="st">PING</small><b id="sd">…</b></div>
     </div>
     <div class="note" id="note"></div>
+    <div class="info">
+      <div class="row"><span>IP address</span><b id="ipV">…</b></div>
+      <div class="row"><span>Provider (ISP)</span><b id="ispV">…</b></div>
+      <div class="row"><span>Location</span><b id="locV">…</b></div>
+      <div class="row"><span>Wi-Fi name</span><input id="netName" maxlength="40" placeholder="Type it (optional)" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    </div>
+    <div class="hint">Browsers can't read the Wi-Fi name, so type it once. It is saved on this device only.</div>
+    <button class="copy" id="copyBtn" disabled>Copy result</button>
     <details id="diag" style="display:none;margin-top:14px">
       <summary style="cursor:pointer;font-size:12px;color:#666">Test details</summary>
       <pre id="diagTxt" style="margin-top:10px;padding:12px;background:#0e0e0e;border:1px solid #1e1e1e;border-radius:12px;font-size:11px;line-height:1.6;color:#9ca3af;white-space:pre-wrap;word-break:break-word"></pre>
@@ -104,7 +127,12 @@ function render(){
 }
 render();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-function setPhase(t){ E.phase.textContent = t; E.st.textContent = t; }
+function setPhase(t){
+  E.phase.textContent = t; E.st.textContent = t;
+  const up = t === 'UPLOAD';
+  E.phase.style.color = up ? '#f472b6' : '#22d3ee';
+  E.prog.classList.toggle('up', up);
+}
 function showError(k, msg){
   target[k] = 0;
   E[k].textContent = 'ERROR';
@@ -226,6 +254,56 @@ function ulStream(ctx){
   once();
 }
 
+// ---------- visitor info (IP / ISP / location) + Wi-Fi name + copy ----------
+const netEl = $('netName'), copyBtn = $('copyBtn');
+let visitor = {ip:'', isp:'', city:'', country:''};
+let lastResult = null;
+
+try { netEl.value = localStorage.getItem('st_netname') || ''; } catch(e) {}
+netEl.addEventListener('input', () => { try { localStorage.setItem('st_netname', netEl.value.trim()); } catch(e) {} });
+
+(async function loadInfo(){
+  try {
+    const r = await fetch('/info', {cache:'no-store'});
+    visitor = await r.json();
+  } catch(e) {}
+  const loc = [visitor.city, visitor.country].filter(Boolean).join(', ');
+  $('ipV').textContent  = visitor.ip  || 'unavailable';
+  $('ispV').textContent = visitor.isp || (visitor.ip ? 'unknown' : 'unavailable');
+  $('locV').textContent = loc || (visitor.ip ? 'unknown' : 'unavailable');
+})();
+
+function resultText(){
+  const r = lastResult, net = netEl.value.trim();
+  const c = navigator.connection && navigator.connection.type ? navigator.connection.type : '';
+  const loc = [visitor.city, visitor.country].filter(Boolean).join(', ');
+  return [
+    `Speedtest - ${r.time}`,
+    `Download: ${r.dl ? fmt(r.dl) + ' Mbps' : 'failed'}`,
+    `Upload: ${r.ul ? fmt(r.ul) + ' Mbps' : 'failed'}`,
+    `Ping: ${r.ping} ms | Jitter: ${r.jit} ms`,
+    `IP: ${visitor.ip || '-'}`,
+    `ISP: ${visitor.isp || '-'}`,
+    `Location: ${loc || '-'}`,
+    `Wi-Fi: ${net || '-'}` + (c ? ` (${c})` : '')
+  ].join('\n');
+}
+async function copyText(txt){
+  try { await navigator.clipboard.writeText(txt); return true; } catch(e) {}
+  try {                                                    // fallback for older Safari / non-secure pages
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, txt.length);
+    const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+  } catch(e) { return false; }
+}
+copyBtn.onclick = async () => {
+  if (!lastResult) return;
+  const ok = await copyText(resultText());
+  copyBtn.textContent = ok ? 'Copied ✓' : 'Copy failed';
+  setTimeout(() => { copyBtn.textContent = 'Copy result'; }, 2000);
+};
+
 // ---------- diagnostics ----------
 function showDiag(dl, ul){
   const res = performance.getEntriesByType('resource');
@@ -259,6 +337,7 @@ E.go.onclick = async () => {
   E.ping.textContent = '—'; E.jit.textContent = '—'; setGauge(0);
   let dl = {mbps:0}, ul = {mbps:0};
   $('diag').style.display = 'none';
+  copyBtn.disabled = true; lastResult = null;
   try { performance.clearResourceTimings(); } catch(e) {}
   try {
     await pingTest();
@@ -276,6 +355,11 @@ E.go.onclick = async () => {
     E.note.textContent = 'Test error: ' + (e.message || e);
   } finally {
     try { showDiag(dl, ul); } catch(e) {}
+    if (dl.mbps || ul.mbps){
+      lastResult = {dl: dl.mbps || 0, ul: ul.mbps || 0, ping: E.ping.textContent, jit: E.jit.textContent,
+                    time: new Date().toLocaleString()};
+      copyBtn.disabled = false;
+    }
     setPhase('DONE');
     E.sd.textContent = `${dl.mbps ? fmt(dl.mbps) : '—'} / ${ul.mbps ? fmt(ul.mbps) : '—'}`;
     setGauge(0);
